@@ -22,7 +22,7 @@ def initialize_category(debugger, internal_dict):
     global module, rust_category, max_string_summary_langth
 
     rust_category = debugger.CreateCategory('Rust')
-    # rust_category.AddLanguage(lldb.eLanguageTypeRust)
+    #rust_category.AddLanguage(lldb.eLanguageTypeRust)
     rust_category.SetEnabled(True)
 
     attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
@@ -585,6 +585,7 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if union.GetName() != "$variants$" or union_child_count < 1:
             return
 
+
         self.summary = '<invalid rust enum>'
 
         child_index = self.get_discr_value(union, 0)
@@ -829,4 +830,28 @@ def __lldb_init_module(debugger_obj, internal_dict): # pyright: ignore
     initialize_category(debugger_obj, internal_dict)
 
 
-print("WTF")
+# This file is based on by vadimcn/codelldb by Vadim Chugunov
+# https://github.com/vadimcn/codelldb/blob/05502bf75e4e7878a99b0bf0a7a81bba2922cbe3/formatters/rust.py
+# It is used under the terms of the MIT License:
+#
+# The MIT License (MIT)
+#
+# Copyright (c) 2016 Vadim Chugunov
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
