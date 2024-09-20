@@ -1,0 +1,2 @@
+lldb-python==19.0.0.dev1
+pytest==8.3.3
