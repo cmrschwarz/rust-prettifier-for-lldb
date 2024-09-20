@@ -80,7 +80,7 @@ def test_c_style_enum(tmpdir):
         let x = CStyleEnum::A;
     """
     run_rust_test(tmpdir, src, {
-        "x": "A"
+        "x": "A"  # TODO: change this to be Foo::A
     })
 
 
@@ -93,6 +93,24 @@ def test_basic_rust_enum(tmpdir):
     """
     run_rust_test(tmpdir, src, {
         "x": "Foo::A(..)"
+    })
+
+
+
+
+def test_basic_rust_enum(tmpdir):
+    src = """
+        enum RegularEnum {
+            A,
+            B(i32, i32),
+            C { x: i64, y: f64 },
+        }
+        let a = RegularEnum::A;
+        let b = RegularEnum::B(1, 2);
+        let c = RegularEnum::C{x: 1, y: 2.0};
+    """
+    run_rust_test(tmpdir, src, {
+        "a": "RegularEnum::A"
     })
 
 
