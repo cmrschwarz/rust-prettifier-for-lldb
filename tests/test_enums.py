@@ -6,7 +6,8 @@ import lldb
 import sys
 import textwrap
 
-PRETTIFIER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LLDB .py")
+PACKAGE_ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PRETTIFIER_PATH = os.path.join(PACKAGE_ROOT_PATH, "rust_prettifier_for_lldb.py")
 
 def run_rust_test(
     temp_dir: py.path.local,
