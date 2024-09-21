@@ -111,3 +111,55 @@ def test_multi_enum_variant(tmpdir):
     })
 
 
+def test_option(tmpdir):
+    src = """
+        let opt_str1: Option<&str> = Some("string");
+        let opt_str2: Option<&str> = None;
+        let opt_str3: Option<*const u8> = Some("other string".as_ptr());
+    """
+    run_rust_test(tmpdir, src, {
+        "opt_str1": "Some(\"string\")"
+    })
+
+def test_result(tmpdir):
+    src = """
+        let result_ok: Result<&str, String> = Ok("ok");
+        let result_err: Result<&str, String> = Err("err".into());
+    """
+    run_rust_test(tmpdir, src, {
+        "result_ok": "Ok(\"ok\")",
+        "result_err": "Err(\"err\")"
+    })
+
+def test_cow(tmpdir):
+    src = """
+        use std::borrow::Cow;
+        let cow1 = Cow::Borrowed("their cow");
+        let cow2 = Cow::<str>::Owned("my cow".into());
+    """
+    run_rust_test(tmpdir, src, {
+        "cow1": "Cow::Borrowed(\"their cow\")",
+        "cow2": "Cow::Owned(\"my cow\")"
+    })
+
+
+def _broken_test_lld_crash(tmpdir): #TODO: send a bugreport to LLD
+    src="""
+        use std::num::NonZeroI64;
+        #[repr(C)]
+        struct Foo {
+            x: i64,
+            y: NonZeroI64,
+        }
+        struct Bar {
+            x: i64,
+        }
+        enum Baz {
+            Foo(Foo),
+            Bar(Bar),
+        }
+        let baz = Baz::Bar(Bar{x: 3});
+    """
+    run_rust_test(tmpdir, src, {
+        "baz": "Baz::Bar(Bar{x: 3})"
+    })
