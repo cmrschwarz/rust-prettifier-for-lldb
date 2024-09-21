@@ -77,9 +77,9 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(StdHashMapSynthProvider, r'^std::collections::hash::map::HashMap<.+>$', True)
     attach_synthetic_to_type(StdHashSetSynthProvider, r'^std::collections::hash::set::HashSet<.+>$', True)
 
-    #attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::option::Option<.+>$', True)
-    #attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::result::Result<.+>$', True)
-    #attach_synthetic_to_type(GenericEnumSynthProvider, r'^alloc::borrow::Cow<.+>$', True)
+    attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::option::Option<.+>$', True)
+    attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::result::Result<.+>$', True)
+    attach_synthetic_to_type(GenericEnumSynthProvider, r'^alloc::borrow::Cow<.+>$', True)
 
 
     if 'rust' in internal_dict.get('source_languages', []):

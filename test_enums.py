@@ -6,7 +6,7 @@ import lldb
 import sys
 import textwrap
 
-import rust
+PRETTIFIER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LLDB .py")
 
 def run_rust_test(
     temp_dir: py.path.local,
@@ -31,8 +31,7 @@ def run_rust_test(
     )
 
     if result.returncode != 0:
-        if result.stderr != "":
-            sys.stderr.write(result.stderr.decode("utf-8"))
+        assert result.stderr.decode("utf-8") == ""
         assert result.returncode == 0
 
     debugger: lldb.SBDebugger = lldb.SBDebugger.Create()
@@ -53,7 +52,7 @@ def run_rust_test(
 
     repl: lldb.SBCommandInterpreter = debugger.GetCommandInterpreter()
     res = lldb.SBCommandReturnObject()
-    repl.HandleCommand("command script import /home/cmrs/Desktop/projects/lldb-rust/rust.py", res)
+    repl.HandleCommand(f"command script import {PRETTIFIER_PATH}", res)
     assert res.Succeeded()
 
     for (name, summary) in expected_var_summaries.items():
@@ -96,9 +95,7 @@ def test_basic_rust_enum(tmpdir):
     })
 
 
-
-
-def test_basic_rust_enum(tmpdir):
+def test_multi_enum_variant(tmpdir):
     src = """
         enum RegularEnum {
             A,
@@ -112,7 +109,5 @@ def test_basic_rust_enum(tmpdir):
     run_rust_test(tmpdir, src, {
         "a": "RegularEnum::A"
     })
-
-
 
 
