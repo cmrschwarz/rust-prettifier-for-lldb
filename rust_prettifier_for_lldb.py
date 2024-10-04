@@ -1,28 +1,31 @@
 from __future__ import print_function, division
 import sys
 import logging
-import lldb
+import lldb  # type: ignore
 import weakref
-
-if sys.version_info[0] == 2:
-    # python2-based LLDB accepts utf8-encoded ascii strings only.
-    def to_lldb_str(s): return s.encode('utf8', 'backslashreplace') if isinstance(s, unicode) else s
-    range = xrange
-else:
-    to_lldb_str = str
+import re
 
 log = logging.getLogger(__name__)
 
 module = sys.modules[__name__]
 rust_category = None
+lldb_major_version = None
 
 max_string_summary_langth = 1024
 
 def initialize_category(debugger, internal_dict):
-    global module, rust_category, max_string_summary_langth
+    global module, rust_category, max_string_summary_langth, lldb_major_version
+
+    version_string_match = re.match(
+        r"lldb version (\d+)\.\d+",
+        lldb.SBDebugger.GetVersionString(),
+        re.IGNORECASE
+    )
+    if version_string_match is not None:
+        lldb_major_version = version_string_match.groups(1)
 
     rust_category = debugger.CreateCategory('Rust')
-    #rust_category.AddLanguage(lldb.eLanguageTypeRust)
+    # rust_category.AddLanguage(lldb.eLanguageTypeRust)
     rust_category.SetEnabled(True)
 
     attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
@@ -122,7 +125,7 @@ def get_synth_summary(synth_class, valobj, dict):
             return None
             #raise Exception("Could not provide summary for given object")
         else:
-            return to_lldb_str(summary)
+            return str(summary)
     except Exception as e:
         log.exception('%s', e)
         raise
