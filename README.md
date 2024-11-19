@@ -2,19 +2,22 @@
 
 Script to add Rust specific pretty-printing to the LLDB debugger.
 
-## Usage Standalone LLDB
+## Standalone LLDB
 
 To load the script into your lldb debugger instance, execute the following lldb command:
 
 ```
-command script import /path/to/rust_prettifier_for_lldb.py
-
+command script import <path to rust_prettifier_for_lldb.py>
 ```
 
+## Usage with VSCode Debug Adapters
+To use this script with VSCode debug adapters you have to instruct them
+to execute a lldb command before the actual debugging session to load 
+the `rust_prettifier_for_lldb.py` script.
 
-## Usage VSCode + code-lldb
-To use this script in VSCode with the [code-lldb](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension,
-add the `preRunCommands` json tag to your launch configuration(s)
+
+### VSCode + CodeLLDB
+To use this script in VSCode with the [code-lldb](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb) extension, add the `preRunCommands` json tag to your launch configuration(s)
 as shown in the example configuration below:
 
 ```
@@ -24,17 +27,18 @@ as shown in the example configuration below:
         {
             "type": "lldb",
             "request": "launch",
-            "name": "scr",
+            "name": "Debug",
             "cargo": {
                 "args": [
                     "build",
                 ],
                 "filter": {
+                    "name": "<binary name here>",
                     "kind": "bin"
                 }
             },
             "preRunCommands": [
-                "command script import /path/to/your/checkout/of/rust_prettifier_for_lldb.py"
+                "command script import <path to rust_prettifier_for_lldb.py>"
             ],
             "args": [],
          
@@ -44,7 +48,7 @@ as shown in the example configuration below:
 }
 ```
 
-## Usage VSCode + lldb-dap
+### VSCode + lldb-dap
 
 To use this script in VSCode with the [lldb-dap](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap) extension, add the `initCommands` json tag to your launch configuration(s), as shown in the example configuration below:
 
@@ -56,11 +60,11 @@ To use this script in VSCode with the [lldb-dap](https://marketplace.visualstudi
             "type": "lldb-dap",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/program/to/debug",
+            "program": "<binary name here>",
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [
-                "command script import /path/to/your/checkout/of/rust_prettifier_for_lldb.py"
+                "command script import <path to rust_prettifier_for_lldb.py>"
             ],
         }
     ]
