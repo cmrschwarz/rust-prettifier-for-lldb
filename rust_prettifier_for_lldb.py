@@ -350,10 +350,14 @@ class ArrayLikeSynthProvider(RustSynthProvider):
 
 class StdVectorSynthProvider(ArrayLikeSynthProvider):
     def ptr_and_len(self, vec):
-        return (
-            read_unique_ptr(gcm(vec, 'buf', 'ptr')),
-            gcm(vec, 'len').GetValueAsUnsigned()
-        )
+        element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+        print(element_type)
+        ptr = gcm(
+            vec,
+            'buf', 'inner', 'ptr', 'pointer', 'pointer'
+        ).Cast(element_type.GetPointerType())
+        len = gcm(vec, 'len').GetValueAsUnsigned()
+        return (ptr, len)
 
     def get_summary(self):
         return '(%d) vec![%s]' % (self.len, sequence_summary((self.get_child_at_index(i) for i in range(self.len))))
