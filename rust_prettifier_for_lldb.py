@@ -1,9 +1,40 @@
+# rust-prettifier-for-lldb, Christian Schwarz, 2024
+
+# This file is based on by vadimcn/codelldb by Vadim Chugunov
+# https://github.com/vadimcn/codelldb/blob/05502bf75e4e7878a99b0bf0a7a81bba2922cbe3/formatters/rust.py
+# The original version was used and adapted under the terms of the MIT License:
+#
+# The MIT License (MIT)
+#
+# Copyright (c) 2016 Vadim Chugunov
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 from __future__ import print_function, division
 import sys
 import logging
 import lldb  # type: ignore
 import weakref
 import re
+
+print("arrr")
 
 log = logging.getLogger(__name__)
 
@@ -12,6 +43,7 @@ rust_category = None
 lldb_major_version = None
 
 max_string_summary_langth = 1024
+
 
 def initialize_category(debugger, internal_dict):
     global module, rust_category, max_string_summary_langth, lldb_major_version
@@ -31,16 +63,20 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
 
     attach_summary_to_type(tuple_summary_provider, r'^\(.*\)$', True)
-    attach_synthetic_to_type(MsvcTupleSynthProvider, r'^tuple\$?<.+>$', True)  # *-windows-msvc uses this name since 1.47
+    # *-windows-msvc uses this name since 1.47
+    attach_synthetic_to_type(MsvcTupleSynthProvider, r'^tuple\$?<.+>$', True)
 
     attach_synthetic_to_type(StrSliceSynthProvider, '&str')
     attach_synthetic_to_type(StrSliceSynthProvider, 'str*')
-    attach_synthetic_to_type(StrSliceSynthProvider, 'str')  # *-windows-msvc uses this name since 1.5?
+    # *-windows-msvc uses this name since 1.5?
+    attach_synthetic_to_type(StrSliceSynthProvider, 'str')
     attach_synthetic_to_type(StrSliceSynthProvider, 'ref$<str$>')
     attach_synthetic_to_type(StrSliceSynthProvider, 'ref_mut$<str$>')
 
-    attach_synthetic_to_type(StdStringSynthProvider, '^(collections|alloc)::string::String$', True)
-    attach_synthetic_to_type(StdVectorSynthProvider, r'^(collections|alloc)::vec::Vec<.+>$', True)
+    attach_synthetic_to_type(StdStringSynthProvider,
+                             '^(collections|alloc)::string::String$', True)
+    attach_synthetic_to_type(StdVectorSynthProvider,
+                             r'^(collections|alloc)::vec::Vec<.+>$', True)
     attach_synthetic_to_type(StdVecDequeSynthProvider,
                              r'^(collections|alloc::collections)::vec_deque::VecDeque<.+>$', True)
 
@@ -48,18 +84,28 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(MsvcEnum2SynthProvider, r'^enum2\$<.+>$', True)
 
     attach_synthetic_to_type(SliceSynthProvider, r'^&(mut *)?\[.*\]$', True)
-    attach_synthetic_to_type(MsvcSliceSynthProvider, r'^(mut *)?slice\$?<.+>.*$', True)
-    attach_synthetic_to_type(MsvcSliceSynthProvider, r'^ref(_mut)?\$<slice2\$<.+>.*>$', True)
+    attach_synthetic_to_type(MsvcSliceSynthProvider,
+                             r'^(mut *)?slice\$?<.+>.*$', True)
+    attach_synthetic_to_type(MsvcSliceSynthProvider,
+                             r'^ref(_mut)?\$<slice2\$<.+>.*>$', True)
 
-    attach_synthetic_to_type(StdCStringSynthProvider, '^(std|alloc)::ffi::c_str::CString$', True)
-    attach_synthetic_to_type(StdCStrSynthProvider, '^&?(std|core)::ffi::c_str::CStr$', True)
-    attach_synthetic_to_type(StdCStrSynthProvider, 'ref$<core::ffi::c_str::CStr>')
-    attach_synthetic_to_type(StdCStrSynthProvider, 'ref_mut$<core::ffi::c_str::CStr>')
+    attach_synthetic_to_type(StdCStringSynthProvider,
+                             '^(std|alloc)::ffi::c_str::CString$', True)
+    attach_synthetic_to_type(StdCStrSynthProvider,
+                             '^&?(std|core)::ffi::c_str::CStr$', True)
+    attach_synthetic_to_type(StdCStrSynthProvider,
+                             'ref$<core::ffi::c_str::CStr>')
+    attach_synthetic_to_type(StdCStrSynthProvider,
+                             'ref_mut$<core::ffi::c_str::CStr>')
 
-    attach_synthetic_to_type(StdOsStringSynthProvider, 'std::ffi::os_str::OsString')
-    attach_synthetic_to_type(StdOsStrSynthProvider, '^&?std::ffi::os_str::OsStr', True)
-    attach_synthetic_to_type(StdOsStrSynthProvider, 'ref$<std::ffi::os_str::OsStr>')
-    attach_synthetic_to_type(StdOsStrSynthProvider, 'ref_mut$<std::ffi::os_str::OsStr>')
+    attach_synthetic_to_type(StdOsStringSynthProvider,
+                             'std::ffi::os_str::OsString')
+    attach_synthetic_to_type(StdOsStrSynthProvider,
+                             '^&?std::ffi::os_str::OsStr', True)
+    attach_synthetic_to_type(StdOsStrSynthProvider,
+                             'ref$<std::ffi::os_str::OsStr>')
+    attach_synthetic_to_type(StdOsStrSynthProvider,
+                             'ref_mut$<std::ffi::os_str::OsStr>')
 
     attach_synthetic_to_type(StdPathBufSynthProvider, 'std::path::PathBuf')
     attach_synthetic_to_type(StdPathSynthProvider, '^&?std::path::Path', True)
@@ -67,39 +113,55 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(StdPathSynthProvider, 'ref_mut$<std::path::Path>')
 
     attach_synthetic_to_type(StdRcSynthProvider, r'^alloc::rc::Rc<.+>$', True)
-    attach_synthetic_to_type(StdRcSynthProvider, r'^alloc::rc::Weak<.+>$', True)
-    attach_synthetic_to_type(StdArcSynthProvider, r'^alloc::(sync|arc)::Arc<.+>$', True)
-    attach_synthetic_to_type(StdArcSynthProvider, r'^alloc::(sync|arc)::Weak<.+>$', True)
-    attach_synthetic_to_type(StdMutexSynthProvider, r'^std::sync::mutex::Mutex<.+>$', True)
+    attach_synthetic_to_type(
+        StdRcSynthProvider, r'^alloc::rc::Weak<.+>$', True)
+    attach_synthetic_to_type(
+        StdArcSynthProvider, r'^alloc::(sync|arc)::Arc<.+>$', True)
+    attach_synthetic_to_type(
+        StdArcSynthProvider, r'^alloc::(sync|arc)::Weak<.+>$', True)
+    attach_synthetic_to_type(StdMutexSynthProvider,
+                             r'^std::sync::mutex::Mutex<.+>$', True)
 
-    attach_synthetic_to_type(StdCellSynthProvider, r'^core::cell::Cell<.+>$', True)
-    attach_synthetic_to_type(StdRefCellSynthProvider, r'^core::cell::RefCell<.+>$', True)
-    attach_synthetic_to_type(StdRefCellBorrowSynthProvider, r'^core::cell::Ref<.+>$', True)
-    attach_synthetic_to_type(StdRefCellBorrowSynthProvider, r'^core::cell::RefMut<.+>$', True)
+    attach_synthetic_to_type(StdCellSynthProvider,
+                             r'^core::cell::Cell<.+>$', True)
+    attach_synthetic_to_type(StdRefCellSynthProvider,
+                             r'^core::cell::RefCell<.+>$', True)
+    attach_synthetic_to_type(
+        StdRefCellBorrowSynthProvider, r'^core::cell::Ref<.+>$', True)
+    attach_synthetic_to_type(
+        StdRefCellBorrowSynthProvider, r'^core::cell::RefMut<.+>$', True)
 
-    attach_synthetic_to_type(StdHashMapSynthProvider, r'^std::collections::hash::map::HashMap<.+>$', True)
-    attach_synthetic_to_type(StdHashSetSynthProvider, r'^std::collections::hash::set::HashSet<.+>$', True)
+    attach_synthetic_to_type(
+        StdHashMapSynthProvider, r'^std::collections::hash::map::HashMap<.+>$', True)
+    attach_synthetic_to_type(
+        StdHashSetSynthProvider, r'^std::collections::hash::set::HashSet<.+>$', True)
 
-    attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::option::Option<.+>$', True)
-    attach_synthetic_to_type(GenericEnumSynthProvider, r'^core::result::Result<.+>$', True)
-    attach_synthetic_to_type(GenericEnumSynthProvider, r'^alloc::borrow::Cow<.+>$', True)
-
+    attach_synthetic_to_type(GenericEnumSynthProvider,
+                             r'^core::option::Option<.+>$', True)
+    attach_synthetic_to_type(GenericEnumSynthProvider,
+                             r'^core::result::Result<.+>$', True)
+    attach_synthetic_to_type(GenericEnumSynthProvider,
+                             r'^alloc::borrow::Cow<.+>$', True)
 
     if 'rust' in internal_dict.get('source_languages', []):
         lldb.SBDebugger.SetInternalVariable('target.process.thread.step-avoid-regexp',
                                             '^<?(std|core|alloc)::', debugger.GetInstanceName())
 
-    max_string_summary_langth = debugger.GetSetting('target.max-string-summary-length').GetIntegerValue()
+    max_string_summary_langth = debugger.GetSetting(
+        'target.max-string-summary-length').GetIntegerValue()
 
 
 def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
     global module, rust_category
     # log.debug('attaching synthetic %s to "%s", is_regex=%s', synth_class.__name__, type_name, is_regex)
-    synth = lldb.SBTypeSynthetic.CreateWithClassName(__name__ + '.' + synth_class.__name__)
+    synth = lldb.SBTypeSynthetic.CreateWithClassName(
+        __name__ + '.' + synth_class.__name__)
     synth.SetOptions(lldb.eTypeOptionCascade)
-    rust_category.AddTypeSynthetic(lldb.SBTypeNameSpecifier(type_name, is_regex), synth)
+    rust_category.AddTypeSynthetic(
+        lldb.SBTypeNameSpecifier(type_name, is_regex), synth)
 
-    def summary_fn(valobj, dict): return get_synth_summary(synth_class, valobj, dict)
+    def summary_fn(valobj, dict): return get_synth_summary(
+        synth_class, valobj, dict)
     # LLDB accesses summary fn's by name, so we need to create a unique one.
     summary_fn.__name__ = '_get_synth_summary_' + synth_class.__name__
     setattr(module, summary_fn.__name__, summary_fn)
@@ -109,9 +171,11 @@ def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
 def attach_summary_to_type(summary_fn, type_name, is_regex=False):
     global module, rust_category
     # log.debug('attaching summary %s to "%s", is_regex=%s', summary_fn.__name__, type_name, is_regex)
-    summary = lldb.SBTypeSummary.CreateWithFunctionName(__name__ + '.' + summary_fn.__name__)
+    summary = lldb.SBTypeSummary.CreateWithFunctionName(
+        __name__ + '.' + summary_fn.__name__)
     summary.SetOptions(lldb.eTypeOptionCascade)
-    rust_category.AddTypeSummary(lldb.SBTypeNameSpecifier(type_name, is_regex), summary)
+    rust_category.AddTypeSummary(
+        lldb.SBTypeNameSpecifier(type_name, is_regex), summary)
 
 
 # 'get_summary' is annoyingly not a part of the standard LLDB synth provider API.
@@ -123,7 +187,7 @@ def get_synth_summary(synth_class, valobj, dict):
 
         if summary is None:
             return None
-            #raise Exception("Could not provide summary for given object")
+            # raise Exception("Could not provide summary for given object")
         else:
             return str(summary)
     except Exception as e:
@@ -200,7 +264,8 @@ def sequence_summary(childern, maxsize=32):
 
 
 def tuple_summary(obj, skip_first=0):
-    fields = [obj_summary(obj.GetChildAtIndex(i)) for i in range(skip_first, obj.GetNumChildren())]
+    fields = [obj_summary(obj.GetChildAtIndex(i))
+              for i in range(skip_first, obj.GetNumChildren())]
     return '(%s)' % ', '.join(fields)
 
 
@@ -365,7 +430,8 @@ class StringLikeSynthProvider(ArrayLikeSynthProvider):
         return ch
 
     def get_summary(self):
-        strval = string_from_ptr(self.ptr, min(self.len, max_string_summary_langth))
+        strval = string_from_ptr(self.ptr, min(
+            self.len, max_string_summary_langth))
         if self.len > max_string_summary_langth:
             strval += u'...'
         return u'"%s"' % strval
@@ -380,6 +446,7 @@ class StrSliceSynthProvider(StringLikeSynthProvider):
 
     def get_type_name(self):
         return '&str'
+
 
 class StdStringSynthProvider(StringLikeSynthProvider):
     def ptr_and_len(self, valobj):
@@ -415,12 +482,15 @@ class FFISliceSynthProvider(StringLikeSynthProvider):
     def ptr_and_len(self, valobj):
         process = valobj.GetProcess()
         slice_ptr = valobj.GetLoadAddress()
-        data_ptr_type = valobj.GetTarget().GetBasicType(lldb.eBasicTypeChar).GetPointerType()
+        data_ptr_type = valobj.GetTarget().GetBasicType(
+            lldb.eBasicTypeChar).GetPointerType()
         # Unsized slice objects have incomplete debug info, so here we just assume standard slice
         # reference layout: [<pointer to data>, <data size>]
         error = lldb.SBError()
-        pointer = valobj.CreateValueFromAddress('data', slice_ptr, data_ptr_type)
-        length = process.ReadPointerFromMemory(slice_ptr + process.GetAddressByteSize(), error)
+        pointer = valobj.CreateValueFromAddress(
+            'data', slice_ptr, data_ptr_type)
+        length = process.ReadPointerFromMemory(
+            slice_ptr + process.GetAddressByteSize(), error)
         return pointer, length
 
 
@@ -485,7 +555,8 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
 class StdRcSynthProvider(StdRefCountedSynthProvider):
     def update(self):
         inner = read_unique_ptr(gcm(self.valobj, 'ptr'))
-        self.strong = gcm(inner, 'strong', 'value', 'value').GetValueAsUnsigned()
+        self.strong = gcm(inner, 'strong', 'value',
+                          'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'value', 'value').GetValueAsUnsigned()
         if self.strong > 0:
             self.deref = gcm(inner, 'value')
@@ -526,7 +597,8 @@ class StdRefCellSynthProvider(DerefSynthProvider):
         self.deref.SetPreferSyntheticValue(True)
 
     def get_summary(self):
-        borrow = gcm(self.valobj, 'borrow', 'value', 'value').GetValueAsSigned()
+        borrow = gcm(self.valobj, 'borrow', 'value',
+                     'value').GetValueAsSigned()
         s = ''
         if borrow < 0:
             s = '(borrowed:mut) '
@@ -588,7 +660,6 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if union.GetName() != "$variants$" or union_child_count < 1:
             return
 
-
         self.summary = '<invalid rust enum>'
 
         child_index = self.get_discr_value(union, 0)
@@ -612,7 +683,8 @@ class GenericEnumSynthProvider(EnumSynthProvider):
 
         enum_type = self.valobj.GetType()
         if enum_type.IsPointerType():
-            enum_name = "&" + enum_type.GetPointeeType().GetName().split('::')[-1]
+            enum_name = "&" + \
+                enum_type.GetPointeeType().GetName().split('::')[-1]
         else:
             enum_name = enum_type.GetName().split('::')[-1]
 
@@ -627,6 +699,7 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             self.summary = f"{type_name}(..)"
         else:
             self.summary = f"{type_name}{{..}}"
+
 
 class TaggedEnumSynthProvider(EnumSynthProvider):
     def update(self):
@@ -679,7 +752,8 @@ class MsvcEnumSynthProvider(EnumSynthProvider):
         tparams = get_template_params(self.valobj.GetTypeName())
         if len(tparams) == 1:  # Regular enum
             discr = gcm(self.valobj, 'discriminant')
-            self.variant = gcm(self.valobj, 'variant' + str(discr.GetValueAsUnsigned()))
+            self.variant = gcm(self.valobj, 'variant' +
+                               str(discr.GetValueAsUnsigned()))
             variant_name = discr.GetValue()
         else:  # Niche enum
             dataful_min = int(tparams[1])
@@ -697,7 +771,8 @@ class MsvcEnumSynthProvider(EnumSynthProvider):
         if self.variant.IsValid() and self.variant.GetNumChildren() > self.skip_first:
             if self.variant.GetChildAtIndex(self.skip_first).GetName() == '__0':
                 self.is_tuple_variant = True
-                self.summary = variant_name + tuple_summary(self.variant, skip_first=self.skip_first)
+                self.summary = variant_name + \
+                    tuple_summary(self.variant, skip_first=self.skip_first)
             else:
                 self.summary = variant_name + '{...}'
         else:
@@ -762,21 +837,26 @@ class StdHashMapSynthProvider(RustSynthProvider):
 
         inner_table = table.GetChildMemberWithName('table')
         if inner_table.IsValid():
-            self.initialize_hashbrown_v2(inner_table, item_ty)  # 1.52 <= std_version
+            self.initialize_hashbrown_v2(
+                inner_table, item_ty)  # 1.52 <= std_version
         else:
             if not table.GetChildMemberWithName('data'):
-                self.initialize_hashbrown_v2(table, item_ty)  # ? <= std_version < 1.52
+                self.initialize_hashbrown_v2(
+                    table, item_ty)  # ? <= std_version < 1.52
             else:
-                self.initialize_hashbrown_v1(table, item_ty)  # 1.36 <= std_version < ?
+                self.initialize_hashbrown_v1(
+                    table, item_ty)  # 1.36 <= std_version < ?
 
     def initialize_hashbrown_v2(self, table, item_ty):
         self.num_buckets = gcm(table, 'bucket_mask').GetValueAsUnsigned() + 1
         ctrl_ptr = gcm(table, 'ctrl', 'pointer')
         ctrl = ctrl_ptr.GetPointeeData(0, self.num_buckets)
         # Buckets are located above `ctrl`, in reverse order.
-        start_addr = ctrl_ptr.GetValueAsUnsigned() - item_ty.GetByteSize() * self.num_buckets
+        start_addr = ctrl_ptr.GetValueAsUnsigned() - item_ty.GetByteSize() * \
+            self.num_buckets
         buckets_ty = item_ty.GetArrayType(self.num_buckets)
-        self.buckets = self.valobj.CreateValueFromAddress('data', start_addr, buckets_ty)
+        self.buckets = self.valobj.CreateValueFromAddress(
+            'data', start_addr, buckets_ty)
         error = lldb.SBError()
         self.valid_indices = []
         for i in range(self.num_buckets):
@@ -788,7 +868,8 @@ class StdHashMapSynthProvider(RustSynthProvider):
         ctrl_ptr = gcm(table, 'ctrl', 'pointer')
         ctrl = ctrl_ptr.GetPointeeData(0, self.num_buckets)
         buckets_ty = item_ty.GetArrayType(self.num_buckets)
-        self.buckets = gcm(table, 'data', 'pointer').Dereference().Cast(buckets_ty)
+        self.buckets = gcm(
+            table, 'data', 'pointer').Dereference().Cast(buckets_ty)
         error = lldb.SBError()
         self.valid_indices = []
         for i in range(self.num_buckets):
@@ -817,7 +898,8 @@ class StdHashSetSynthProvider(StdHashMapSynthProvider):
     def update(self):
         table = gcm(self.valobj, 'base', 'map', 'table')  # std_version >= 1.48
         if not table.IsValid():
-            table = gcm(self.valobj, 'map', 'base', 'table')  # std_version < 1.48
+            table = gcm(self.valobj, 'map', 'base',
+                        'table')  # std_version < 1.48
         self.initialize_table(table)
 
     def get_child_at_index(self, index):
@@ -828,33 +910,6 @@ class StdHashSetSynthProvider(StdHashMapSynthProvider):
 ##################################################################################################################
 
 
-def __lldb_init_module(debugger_obj, internal_dict): # pyright: ignore
+def __lldb_init_module(debugger_obj, internal_dict):  # pyright: ignore
     log.info('Initializing')
     initialize_category(debugger_obj, internal_dict)
-
-
-# This file is based on by vadimcn/codelldb by Vadim Chugunov
-# https://github.com/vadimcn/codelldb/blob/05502bf75e4e7878a99b0bf0a7a81bba2922cbe3/formatters/rust.py
-# It is used under the terms of the MIT License:
-#
-# The MIT License (MIT)
-#
-# Copyright (c) 2016 Vadim Chugunov
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
