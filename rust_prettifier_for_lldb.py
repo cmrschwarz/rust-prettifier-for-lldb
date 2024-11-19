@@ -404,7 +404,10 @@ class StdVecDequeSynthProvider(RustSynthProvider):
         return int(name.lstrip('[').rstrip(']'))
 
     def get_summary(self):
-        return '(%d) VecDeque[%s]' % (self.num_children(), sequence_summary((self.get_child_at_index(i) for i in range(self.num_children()))))
+        return '(%d) VecDeque[%s]' % (
+            self.num_children(),
+            sequence_summary((self.get_child_at_index(i) for i in range(self.num_children())))
+        )
 
 ##################################################################################################################
 
