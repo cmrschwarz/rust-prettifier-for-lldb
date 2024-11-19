@@ -2,3 +2,6 @@
 /.vscode
 /.venv
 __pycache__
+
+
+/rust_test_crate/target
