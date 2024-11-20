@@ -262,7 +262,7 @@ def get_template_params(type_name):
     return params
 
 
-def obj_summary(valobj, obj_typename=None, unavailable='{...}'):
+def obj_summary(valobj, obj_typename=None, unavailable='{...}', max_len=32):
     summary = valobj.GetSummary()
     if summary is not None:
         return summary
@@ -274,9 +274,15 @@ def obj_summary(valobj, obj_typename=None, unavailable='{...}'):
             summary = f"{obj_typename}{{"
 
         for i in range(child_count):
+            name = valobj.GetType().GetFieldAtIndex(i).GetName()
+            value = valobj.GetChildAtIndex(i)
+            member_summary = f"{name}: {obj_summary(value)}"
             if i != 0:
                 summary += ", "
-            summary += obj_summary(valobj.GetChildAtIndex(i))
+            if len(summary) - 1 + len(member_summary) > max_len:
+                summary += ".."
+                break
+            summary += member_summary
         summary += "}"
         return summary
 
@@ -798,9 +804,19 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             variant_child_count = self.variant.GetNumChildren()
 
         if variant_child_count == 0 and self.variant.GetValue() is None:
-            return  # empty variant
+            if variant_struct_typename is not None:
+                self.variant_summary = variant_struct_typename
+            return
 
-        self.variant_summary = obj_summary(self.variant, obj_typename=variant_struct_typename)
+        max_len = 20
+        if variant_struct_typename is not None:
+            max_len = 0
+
+        self.variant_summary = obj_summary(
+            self.variant,
+            obj_typename=variant_struct_typename,
+            max_len=max_len
+        )
 
 
 class OptionSynthProvider(GenericEnumSynthProvider):
