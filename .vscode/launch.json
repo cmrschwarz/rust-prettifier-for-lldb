@@ -1,0 +1,49 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "subProcess": true,
+            "args": [],
+        },
+        {
+            "name": "Run Specific Test",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "subProcess": true,
+            "args": [
+                "-k",
+                "${input:pattern}"
+            ],
+        },
+        {
+            "name": "Debug Rust Test Crate code-lldb",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "cwd": "${workspaceFolder}/rust_test_crate",
+                "args": [
+                    "build",
+                    "--bin=rust_test_crate"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
+            },
+            "preRunCommands": [
+                "command script import ${workspaceFolder}/rust_prettifier_for_lldb.py"
+            ]
+        },
+    ],
+    "inputs": [
+        {
+            "id": "pattern",
+            "description": "pytest test name pattern for test filtering",
+            "type": "promptString"
+        }
+    ]
+}
