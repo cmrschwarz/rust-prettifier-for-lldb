@@ -31,10 +31,12 @@ fn enums() {
         ..Default::default()
     };
     let a = A::D(foo);
+
     println!("</enums>");
 }
 
 fn collections() {
+    let array = [1, 2, 3];
     let v = vec![1, 2, 3];
     let vd = VecDeque::from_iter([1, 2, 3]);
     println!("</collections>");

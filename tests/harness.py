@@ -19,7 +19,7 @@ PRETTIFIER_PATH = os.path.join(
 def run_rust_test(
     temp_dir: Any,
     rust_src: str,
-    test_code: Callable[[Any], None]
+    test_code: Callable[[lldb.SBDebugger, lldb.SBFrame], None]
 ):
     src_path = os.path.join(str(temp_dir), "main.rs")
     rust_src = textwrap.indent(textwrap.dedent(rust_src), "    ")
@@ -65,12 +65,12 @@ def run_rust_test(
     repl.HandleCommand(f"command script import {PRETTIFIER_PATH}", res)
     assert res.Succeeded()
 
-    test_code(frame)
+    test_code(debugger, frame)
 
     lldb.SBDebugger.Destroy(debugger)
 
 
-def compare_summaries(frame, expected_var_summaries):
+def compare_summaries(frame: lldb.SBFrame, expected_var_summaries: dict[str, str]):
     for (name, expected_summary) in expected_var_summaries.items():
         var = frame.FindVariable(name)
         s = var.GetSummary()
@@ -87,5 +87,28 @@ def expect_summaries(
     run_rust_test(
         temp_dir,
         rust_src,
-        lambda frame: compare_summaries(frame, expected_var_summaries)
+        lambda debugger, frame: compare_summaries(frame, expected_var_summaries)
+    )
+
+
+def compare_command_outputs(debugger, frame: Any, commands: list[tuple[str, str]]):
+    repl: lldb.SBCommandInterpreter = debugger.GetCommandInterpreter()
+    res = lldb.SBCommandReturnObject()
+
+    for (cmd, expected_output) in commands:
+        repl.HandleCommand(cmd, res)
+        assert res.Succeeded()
+        output = res.GetOutput()
+        assert output == expected_output
+
+
+def expect_command_output(
+    temp_dir: Any,
+    rust_src: str,
+    commands: list[tuple[str, str]]
+):
+    run_rust_test(
+        temp_dir,
+        rust_src,
+        lambda debugger, frame: compare_command_outputs(debugger, frame, commands)
     )

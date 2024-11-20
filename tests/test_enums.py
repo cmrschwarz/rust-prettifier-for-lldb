@@ -94,9 +94,9 @@ def test_struct_enum_synthetic(tmpdir):
         let foo = Foo::Bar(Baz{x: 1, y: 2});
     """
 
-    def compare_synth(frame):
+    def compare_synth(dbg, frame):
         foo = frame.FindVariable("foo")
-        y = foo.GetSummary()
+        _ = foo.GetSummary()
         assert foo is not None
 
     run_rust_test(tmpdir, src, compare_synth)
