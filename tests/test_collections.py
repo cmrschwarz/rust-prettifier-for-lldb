@@ -1,4 +1,4 @@
-from test_harness import run_rust_test
+from harness import run_rust_test
 
 
 def test_basic_vec(tmpdir):

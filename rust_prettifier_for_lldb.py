@@ -29,14 +29,10 @@
 
 from __future__ import print_function, division
 import sys
-import logging
 import lldb  # type: ignore
 import weakref
 import re
 
-print(f"loaded rust-prettifier-for-lldb from {__file__}")
-
-log = logging.getLogger(__name__)
 module = sys.modules[__name__]
 rust_category = None
 lldb_major_version = None
@@ -152,7 +148,6 @@ def initialize_category(debugger, internal_dict):
 
 def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
     global module, rust_category
-    # log.debug('attaching synthetic %s to "%s", is_regex=%s', synth_class.__name__, type_name, is_regex)
     synth = lldb.SBTypeSynthetic.CreateWithClassName(
         __name__ + '.' + synth_class.__name__)
     synth.SetOptions(lldb.eTypeOptionCascade)
@@ -169,7 +164,6 @@ def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
 
 def attach_summary_to_type(summary_fn, type_name, is_regex=False):
     global module, rust_category
-    # log.debug('attaching summary %s to "%s", is_regex=%s', summary_fn.__name__, type_name, is_regex)
     summary = lldb.SBTypeSummary.CreateWithFunctionName(
         __name__ + '.' + summary_fn.__name__)
     summary.SetOptions(lldb.eTypeOptionCascade)
@@ -180,18 +174,14 @@ def attach_summary_to_type(summary_fn, type_name, is_regex=False):
 # 'get_summary' is annoyingly not a part of the standard LLDB synth provider API.
 # This trick allows us to share data extraction logic between synth providers and their sibling summary providers.
 def get_synth_summary(synth_class, valobj, dict):
-    try:
-        obj_id = valobj.GetIndexOfChildWithName('$$object-id$$')
-        summary = RustSynthProvider.synth_by_id[obj_id].get_summary()
+    obj_id = valobj.GetIndexOfChildWithName('$$object-id$$')
+    summary = RustSynthProvider.synth_by_id[obj_id].get_summary()
 
-        if summary is None:
-            return None
-            # raise Exception("Could not provide summary for given object")
-        else:
-            return str(summary)
-    except Exception as e:
-        log.exception('%s', e)
-        raise
+    if summary is None:
+        return None
+        # raise Exception("Could not provide summary for given object")
+    else:
+        return str(summary)
 
 
 # Chained GetChildMemberWithName lookups
@@ -303,11 +293,7 @@ class RustSynthProvider(object):
         if name == '$$object-id$$':
             return self.obj_id
 
-        try:
-            return self.get_index_of_child(name)
-        except Exception as e:
-            log.exception('%s', e)
-            raise
+        return self.get_index_of_child(name)
 
     def get_summary(self):
         return None
@@ -331,14 +317,10 @@ class ArrayLikeSynthProvider(RustSynthProvider):
         return True
 
     def get_child_at_index(self, index):
-        try:
-            if not 0 <= index < self.len:
-                return None
-            offset = index * self.item_size
-            return self.ptr.CreateChildAtOffset('[%s]' % index, offset, self.item_type)
-        except Exception as e:
-            log.exception('%s', e)
-            raise
+        if not 0 <= index < self.len:
+            return None
+        offset = index * self.item_size
+        return self.ptr.CreateChildAtOffset('[%s]' % index, offset, self.item_type)
 
     def get_index_of_child(self, name):
         return int(name.lstrip('[').rstrip(']'))
@@ -361,9 +343,9 @@ class StdVectorSynthProvider(ArrayLikeSynthProvider):
 
 class StdVecDequeSynthProvider(RustSynthProvider):
     def update(self):
-        # NOCHECKIN
         element_type = self.valobj.GetType().GetTemplateArgumentType(0)
-        ptr = read_unique_ptr(gcm(self.valobj, 'buf', 'inner', 'ptr', 'pointer'))
+        ptr = read_unique_ptr(
+            gcm(self.valobj, 'buf', 'inner', 'ptr', 'pointer'))
         self.ptr = ptr.Cast(element_type.GetPointerType())
         self.cap = (
             gcm(self.valobj, 'buf', 'inner', 'cap')
@@ -394,14 +376,10 @@ class StdVecDequeSynthProvider(RustSynthProvider):
         return True
 
     def get_child_at_index(self, index):
-        try:
-            if not 0 <= index < self.num_children():
-                return None
-            offset = ((self.startptr + index) % self.cap) * self.item_size
-            return self.ptr.CreateChildAtOffset('[%s]' % index, offset, self.item_type)
-        except Exception as e:
-            log.exception('%s', e)
-            raise
+        if not 0 <= index < self.num_children():
+            return None
+        offset = ((self.startptr + index) % self.cap) * self.item_size
+        return self.ptr.CreateChildAtOffset('[%s]' % index, offset, self.item_type)
 
     def get_index_of_child(self, name):
         return int(name.lstrip('[').rstrip(']'))
@@ -922,5 +900,5 @@ class StdHashSetSynthProvider(StdHashMapSynthProvider):
 
 
 def __lldb_init_module(debugger_obj, internal_dict):  # pyright: ignore
-    log.info('Initializing')
     initialize_category(debugger_obj, internal_dict)
+    print(f"loaded rust-prettifier-for-lldb from {__file__}")
