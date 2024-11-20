@@ -1,4 +1,7 @@
 #![allow(unused)]
+// Set a breakpoint where you want ot inspect and open your debug log.
+// Use commands like `script lldb.frame.FindVariable("foo").GetNonSyntheticValue()`
+// for interactive testing.
 
 use std::collections::VecDeque;
 
@@ -20,8 +23,7 @@ enum A {
     D(StructWithManyMembers),
 }
 
-fn main() {
-    let v = vec![1, 2, 3];
+fn enums() {
     let vd = VecDeque::from([1, 2, 3]);
     let foo = StructWithManyMembers {
         x: 1,
@@ -29,5 +31,16 @@ fn main() {
         ..Default::default()
     };
     let a = A::D(foo);
-    println!("foo");
+    println!("</enums>");
+}
+
+fn collections() {
+    let v = vec![1, 2, 3];
+    let vd = VecDeque::from_iter([1, 2, 3]);
+    println!("</collections>");
+}
+
+fn main() {
+    enums();
+    collections();
 }

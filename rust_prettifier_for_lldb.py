@@ -34,10 +34,9 @@ import lldb  # type: ignore
 import weakref
 import re
 
-print("arrr")
+print(f"loaded rust-prettifier-for-lldb from {__file__}")
 
 log = logging.getLogger(__name__)
-
 module = sys.modules[__name__]
 rust_category = None
 lldb_major_version = None
@@ -46,7 +45,7 @@ max_string_summary_langth = 1024
 
 
 def initialize_category(debugger, internal_dict):
-    global module, rust_category, max_string_summary_langth, lldb_major_version
+    global rust_category, max_string_summary_langth, lldb_major_version
 
     version_string_match = re.match(
         r"lldb version (\d+)\.\d+",
@@ -351,11 +350,8 @@ class ArrayLikeSynthProvider(RustSynthProvider):
 class StdVectorSynthProvider(ArrayLikeSynthProvider):
     def ptr_and_len(self, vec):
         element_type = self.valobj.GetType().GetTemplateArgumentType(0)
-        print(element_type)
-        ptr = gcm(
-            vec,
-            'buf', 'inner', 'ptr', 'pointer', 'pointer'
-        ).Cast(element_type.GetPointerType())
+        ptr = read_unique_ptr(gcm(vec, 'buf', 'inner', 'ptr', 'pointer'))
+        ptr = ptr.Cast(element_type.GetPointerType())
         len = gcm(vec, 'len').GetValueAsUnsigned()
         return (ptr, len)
 
@@ -365,8 +361,15 @@ class StdVectorSynthProvider(ArrayLikeSynthProvider):
 
 class StdVecDequeSynthProvider(RustSynthProvider):
     def update(self):
-        self.ptr = read_unique_ptr(gcm(self.valobj, 'buf', 'ptr'))
-        self.cap = gcm(self.valobj, 'buf', 'cap').GetValueAsUnsigned()
+        # NOCHECKIN
+        element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+        ptr = read_unique_ptr(gcm(self.valobj, 'buf', 'inner', 'ptr', 'pointer'))
+        self.ptr = ptr.Cast(element_type.GetPointerType())
+        self.cap = (
+            gcm(self.valobj, 'buf', 'inner', 'cap')
+            .GetChildAtIndex(0)
+            .GetValueAsUnsigned()
+        )
 
         head = gcm(self.valobj, 'head').GetValueAsUnsigned()
 
@@ -406,7 +409,8 @@ class StdVecDequeSynthProvider(RustSynthProvider):
     def get_summary(self):
         return '(%d) VecDeque[%s]' % (
             self.num_children(),
-            sequence_summary((self.get_child_at_index(i) for i in range(self.num_children())))
+            sequence_summary((self.get_child_at_index(i)
+                             for i in range(self.num_children())))
         )
 
 ##################################################################################################################
