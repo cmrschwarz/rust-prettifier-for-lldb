@@ -258,13 +258,8 @@ def tuple_summary(obj, skip_first=0):
     return '(%s)' % ', '.join(fields)
 
 
-# ----- Summaries -----
-
 def tuple_summary_provider(valobj, dict={}):
     return tuple_summary(valobj)
-
-
-# ----- Synth providers ------
 
 
 class RustSynthProvider(object):
@@ -391,8 +386,6 @@ class StdVecDequeSynthProvider(RustSynthProvider):
                              for i in range(self.num_children())))
         )
 
-##################################################################################################################
-
 
 class SliceSynthProvider(ArrayLikeSynthProvider):
     def ptr_and_len(self, vec):
@@ -501,8 +494,6 @@ class StdPathBufSynthProvider(StdOsStringSynthProvider):
 class StdPathSynthProvider(FFISliceSynthProvider):
     pass
 
-##################################################################################################################
-
 
 class DerefSynthProvider(RustSynthProvider):
     deref = lldb.SBValue()
@@ -522,9 +513,8 @@ class DerefSynthProvider(RustSynthProvider):
     def get_summary(self):
         return obj_summary(self.deref)
 
+
 # Base for Rc and Arc
-
-
 class StdRefCountedSynthProvider(DerefSynthProvider):
     weak = 0
     strong = 0
@@ -601,8 +591,6 @@ class StdRefCellBorrowSynthProvider(DerefSynthProvider):
         self.deref = gcm(self.valobj, 'value', 'pointer').Dereference()
         self.deref.SetPreferSyntheticValue(True)
 
-##################################################################################################################
-
 
 class EnumSynthProvider(RustSynthProvider):
     variant = lldb.SBValue()
@@ -649,6 +637,8 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if union.GetName() != "$variants$" or union_child_count < 1:
             return
 
+        # at this point we assume this is a rust enum,
+        # so if we fail further down the line we report an error
         self.summary = '<invalid rust enum>'
 
         child_index = self.get_discr_value(union, 0)
@@ -804,9 +794,6 @@ class MsvcEnum2SynthProvider(EnumSynthProvider):
         return self.type_name
 
 
-##################################################################################################################
-
-
 class StdHashMapSynthProvider(RustSynthProvider):
     def update(self):
         self.initialize_table(gcm(self.valobj, 'base', 'table'))
@@ -895,8 +882,6 @@ class StdHashSetSynthProvider(StdHashMapSynthProvider):
         bucket_idx = self.valid_indices[index]
         item = self.buckets.GetChildAtIndex(bucket_idx).GetChildAtIndex(0)
         return item.CreateChildAtOffset('[%d]' % index, 0, item.GetType())
-
-##################################################################################################################
 
 
 def __lldb_init_module(debugger_obj, internal_dict):  # pyright: ignore
