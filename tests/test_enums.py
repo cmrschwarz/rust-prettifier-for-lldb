@@ -1,11 +1,11 @@
-from harness import run_rust_test
+from harness import expect_summaries, run_rust_test
 
 
 def test_basic_int(tmpdir):
     src = """
         let x = 3;
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "x": "3"
     })
 
@@ -17,7 +17,7 @@ def test_c_style_enum(tmpdir):
         }
         let x = CStyleEnum::A;
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "x": "A"  # TODO: change this to be Foo::A
     })
 
@@ -29,7 +29,7 @@ def test_basic_rust_enum(tmpdir):
         }
         let x = Foo::A(42);
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "x": "Foo::A(42)"
     })
 
@@ -45,7 +45,7 @@ def test_multi_enum_variant(tmpdir):
         let b = RegularEnum::B(1, 2);
         let c = RegularEnum::C{x: 1, y: 2.0};
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "a": "RegularEnum::A"
     })
 
@@ -56,7 +56,7 @@ def test_option(tmpdir):
         let opt_str2: Option<&str> = None;
         let opt_str3: Option<*const u8> = Some("other string".as_ptr());
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "opt_str1": "Some(\"foobar\")"
     })
 
@@ -66,7 +66,7 @@ def test_result(tmpdir):
         let result_ok: Result<&str, String> = Ok("ok");
         let result_err: Result<&str, String> = Err("err".into());
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "result_ok": "Ok(\"ok\")",
         "result_err": "Err(\"err\")"
     })
@@ -78,13 +78,31 @@ def test_cow(tmpdir):
         let cow1 = Cow::Borrowed("their cow");
         let cow2 = Cow::<str>::Owned("my cow".into());
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "cow1": "Borrowed(\"their cow\")",
         "cow2": "Owned(\"my cow\")",
     })
 
 
-def _broken_test_lld_crash(tmpdir):  # TODO: send a bugreport to LLDB
+def test_struct_enum_synthetic(tmpdir):
+    src = """
+        enum Foo{
+            Bar(Baz)
+        }
+        struct Baz{x: i32, y: i32}
+
+        let foo = Foo::Bar(Baz{x: 1, y: 2});
+    """
+
+    def compare_synth(frame):
+        foo = frame.FindVariable("foo")
+        y = foo.GetSummary()
+        assert foo is not None
+
+    run_rust_test(tmpdir, src, compare_synth)
+
+
+def _broken_test_lld_crash(tmpdir):  # TODfooO: send a bugreport to LLDB
     src = """
         use std::num::NonZeroI64;
         #[repr(C)]
@@ -101,6 +119,6 @@ def _broken_test_lld_crash(tmpdir):  # TODO: send a bugreport to LLDB
         }
         let baz = Baz::Bar(Bar{x: 3});
     """
-    run_rust_test(tmpdir, src, {
+    expect_summaries(tmpdir, src, {
         "baz": "Baz::Bar(Bar{x: 3})"
     })

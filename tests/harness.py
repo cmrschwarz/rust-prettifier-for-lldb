@@ -2,7 +2,7 @@ import os
 import subprocess
 import lldb  # type: ignore
 import textwrap
-from typing import Any
+from typing import Any, Callable
 
 PACKAGE_ROOT_PATH = os.path.abspath(
     os.path.join(
@@ -19,7 +19,7 @@ PRETTIFIER_PATH = os.path.join(
 def run_rust_test(
     temp_dir: Any,
     rust_src: str,
-    expected_var_summaries: dict[str, str]
+    test_code: Callable[[Any], None]
 ):
     src_path = os.path.join(str(temp_dir), "main.rs")
     rust_src = textwrap.indent(textwrap.dedent(rust_src), "    ")
@@ -65,6 +65,12 @@ def run_rust_test(
     repl.HandleCommand(f"command script import {PRETTIFIER_PATH}", res)
     assert res.Succeeded()
 
+    test_code(frame)
+
+    lldb.SBDebugger.Destroy(debugger)
+
+
+def compare_summaries(frame, expected_var_summaries):
     for (name, expected_summary) in expected_var_summaries.items():
         var = frame.FindVariable(name)
         s = var.GetSummary()
@@ -72,4 +78,14 @@ def run_rust_test(
             s = var.GetValue()
         assert s == expected_summary
 
-    lldb.SBDebugger.Destroy(debugger)
+
+def expect_summaries(
+    temp_dir: Any,
+    rust_src: str,
+    expected_var_summaries: dict[str, str]
+):
+    run_rust_test(
+        temp_dir,
+        rust_src,
+        lambda frame: compare_summaries(frame, expected_var_summaries)
+    )

@@ -62,7 +62,7 @@ def initialize_category(debugger, internal_dict):
     # desired result, albeit in a very hacky fashion
     attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
 
-    attach_summary_to_type(tuple_summary_provider, r'^\(.*\)$', True)
+    attach_synthetic_to_type(TupleSynthProvider, r'^\(.*\)$', True)
     # *-windows-msvc uses this name since 1.47
     attach_synthetic_to_type(MsvcTupleSynthProvider, r'^tuple\$?<.+>$', True)
 
@@ -262,13 +262,30 @@ def get_template_params(type_name):
     return params
 
 
-def obj_summary(valobj, unavailable='{...}'):
+def obj_summary(valobj, obj_typename=None, unavailable='{...}'):
     summary = valobj.GetSummary()
     if summary is not None:
         return summary
+    child_count = valobj.GetNumChildren()
+    if child_count != 0:
+        if obj_typename is None:
+            summary = "{"
+        else:
+            summary = f"{obj_typename}{{"
+
+        for i in range(child_count):
+            if i != 0:
+                summary += ", "
+            summary += obj_summary(valobj.GetChildAtIndex(i))
+        summary += "}"
+        return summary
+
     summary = valobj.GetValue()
     if summary is not None:
-        return summary
+        if obj_typename is None:
+            return summary
+        return f"{obj_typename}({summary})"
+
     return unavailable
 
 
@@ -288,10 +305,6 @@ def tuple_summary(obj, skip_first=0):
     fields = [obj_summary(obj.GetChildAtIndex(i))
               for i in range(skip_first, obj.GetNumChildren())]
     return '(%s)' % ', '.join(fields)
-
-
-def tuple_summary_provider(valobj, dict={}):
-    return tuple_summary(valobj)
 
 
 class RustSynthProvider(object):
@@ -347,6 +360,20 @@ class U8SynthProvider(RustSynthProvider):
     def update(self):
         value = self.valobj.GetValueAsUnsigned()
         self.summary = f"{int(value)}"
+
+
+class TupleSynthProvider(RustSynthProvider):
+    def update(self):
+        self.summary = tuple_summary(self.valobj)
+
+    def has_children(self):
+        return True
+
+    def num_children(self):
+        return self.valobj.GetNumChildren()
+
+    def get_child_at_index(self, index):
+        return self.valobj.GetChildAtIndex(index)
 
 
 class ArrayLikeSynthProvider(RustSynthProvider):
@@ -667,10 +694,15 @@ class EnumSynthProvider(RustSynthProvider):
         return self.variant.GetIndexOfChildWithName(name) - self.skip_first
 
     def get_summary(self):
-        if self.typename_summary != "":
-            return self.typename_summary + "::" + self.variant_name + self.variant_summary
+        if self.variant_summary == "":
+            value_summary = self.variant_name
         else:
-            return self.variant_name + self.variant_summary
+            value_summary = f"{self.variant_name}({self.variant_summary})"
+
+        if self.typename_summary != "":
+            return self.typename_summary + "::" + value_summary
+        else:
+            return value_summary
 
 
 def get_enum_discriminator_value(union, index):
@@ -686,7 +718,6 @@ def get_enum_discriminator_value(union, index):
 
 
 class GenericEnumSynthProvider(EnumSynthProvider):
-
     def update(self):
         self.summary = ''
         self.variant = self.valobj
@@ -733,9 +764,11 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         selected_variant = discriminator
 
         if first_variant_without_discriminator is not None:
+            if variant_count == 1:
+                selected_variant = 0
             # probably using pointer or length value as a niche
             # all of this is just based on trial and error, sorry
-            if discriminator == 0x8000000000000000:
+            elif discriminator == 0x8000000000000000:
                 if variant_count > 2:
                     return
                 selected_variant = 1 - first_variant_without_discriminator
@@ -754,14 +787,20 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             self.variant = variant_outer.GetChildAtIndex(1)
 
         # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.
-        variant_typename = self.variant.GetType().GetName()
-        self.variant_name = unscope_typename(variant_typename)
+        variant_typename = unscope_typename(self.variant.GetType().GetName())
+        self.variant_name = variant_typename
 
-        if self.variant.GetNumChildren() != 0:
-            if self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
-                self.variant_summary = f"{tuple_summary(self.variant)}"
-            else:
-                self.variant_summary = "{{..}}"
+        variant_struct_typename = None
+        variant_child_count = self.variant.GetNumChildren()
+        if variant_child_count == 1 and self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
+            self.variant = self.variant.GetChildAtIndex(0)
+            variant_struct_typename = unscope_typename(self.variant.GetType().GetName())
+            variant_child_count = self.variant.GetNumChildren()
+
+        if variant_child_count == 0 and self.variant.GetValue() is None:
+            return  # empty variant
+
+        self.variant_summary = obj_summary(self.variant, obj_typename=variant_struct_typename)
 
 
 class OptionSynthProvider(GenericEnumSynthProvider):
