@@ -55,12 +55,19 @@ def initialize_category(debugger, internal_dict):
     # rust_category.AddLanguage(lldb.eLanguageTypeRust)
     rust_category.SetEnabled(True)
 
+    # LLDB does not seem to allow us to do any custom logic instead of the regex
+    # to decide whether a synth provider matches.
+    # so we place this synth provider first (meaning he will be checked against last)
+    # and let him summarize to "" in case he does not apply, which produces the
+    # desired result, albeit in a very hacky fashion
     attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
 
     attach_summary_to_type(tuple_summary_provider, r'^\(.*\)$', True)
     # *-windows-msvc uses this name since 1.47
     attach_synthetic_to_type(MsvcTupleSynthProvider, r'^tuple\$?<.+>$', True)
 
+    attach_synthetic_to_type(CharSynthProvider, 'char32_t')
+    attach_synthetic_to_type(U8SynthProvider, 'unsigned char')
     attach_synthetic_to_type(StrSliceSynthProvider, '&str')
     attach_synthetic_to_type(StrSliceSynthProvider, 'str*')
     # *-windows-msvc uses this name since 1.5?
@@ -131,11 +138,11 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(
         StdHashSetSynthProvider, r'^std::collections::hash::set::HashSet<.+>$', True)
 
-    attach_synthetic_to_type(GenericEnumSynthProvider,
+    attach_synthetic_to_type(OptionSynthProvider,
                              r'^core::option::Option<.+>$', True)
-    attach_synthetic_to_type(GenericEnumSynthProvider,
+    attach_synthetic_to_type(ResultSynthProvider,
                              r'^core::result::Result<.+>$', True)
-    attach_synthetic_to_type(GenericEnumSynthProvider,
+    attach_synthetic_to_type(CowSynthProvider,
                              r'^alloc::borrow::Cow<.+>$', True)
 
     if 'rust' in internal_dict.get('source_languages', []):
@@ -265,6 +272,9 @@ def tuple_summary_provider(valobj, dict={}):
 class RustSynthProvider(object):
     synth_by_id = weakref.WeakValueDictionary()
     next_id = 0
+    obj_id = 0
+    valobj = None
+    summary = None
 
     def __init__(self, valobj, dict={}):
         self.valobj = valobj
@@ -291,7 +301,27 @@ class RustSynthProvider(object):
         return self.get_index_of_child(name)
 
     def get_summary(self):
-        return None
+        return self.summary
+
+
+class CharSynthProvider(RustSynthProvider):
+    summary = ''
+
+    def update(self):
+        value = self.valobj.GetValueAsUnsigned()
+        c = chr(value)
+        if c.isprintable():
+            self.summary = f"'{c}'"
+        else:
+            self.summary = f"U+0x{value:08X}"
+
+
+class U8SynthProvider(RustSynthProvider):
+    summary = ''
+
+    def update(self):
+        value = self.valobj.GetValueAsUnsigned()
+        self.summary = f"{int(value)}"
 
 
 class ArrayLikeSynthProvider(RustSynthProvider):
@@ -594,7 +624,9 @@ class StdRefCellBorrowSynthProvider(DerefSynthProvider):
 
 class EnumSynthProvider(RustSynthProvider):
     variant = lldb.SBValue()
-    summary = ''
+    typename_summary = ""
+    variant_name = ""
+    variant_summary = ""
     skip_first = 0
 
     def has_children(self):
@@ -610,7 +642,10 @@ class EnumSynthProvider(RustSynthProvider):
         return self.variant.GetIndexOfChildWithName(name) - self.skip_first
 
     def get_summary(self):
-        return self.summary
+        if self.typename_summary != "":
+            return self.typename_summary + "::" + self.variant_name + self.variant_summary
+        else:
+            return self.variant_name + self.variant_summary
 
 
 class GenericEnumSynthProvider(EnumSynthProvider):
@@ -639,7 +674,14 @@ class GenericEnumSynthProvider(EnumSynthProvider):
 
         # at this point we assume this is a rust enum,
         # so if we fail further down the line we report an error
-        self.summary = '<invalid rust enum>'
+        enum_type = self.valobj.GetType()
+        if enum_type.IsPointerType():
+            enum_name = "&" + \
+                enum_type.GetPointeeType().GetName().split('::')[-1]
+        else:
+            enum_name = enum_type.GetName().split('::')[-1]
+        self.typename_summary = enum_name
+        self.variant_name = '<invalid enum variant>'
 
         child_index = self.get_discr_value(union, 0)
         other_index = 1
@@ -660,43 +702,47 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         else:
             return
 
-        enum_type = self.valobj.GetType()
-        if enum_type.IsPointerType():
-            enum_name = "&" + \
-                enum_type.GetPointeeType().GetName().split('::')[-1]
-        else:
-            enum_name = enum_type.GetName().split('::')[-1]
-
-        child_name = self.variant.GetTypeName().split('::')[-1].split(':')[0]
-        type_name = f"{enum_name}::{child_name}"
-
+        self.variant_name = self.variant.GetTypeName().split('::')[-1].split(':')[0]
         elem_count = self.variant.GetNumChildren()
 
-        if elem_count == 0:
-            self.summary = type_name
-        elif self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
-            self.summary = f"{type_name}(..)"
-        else:
-            self.summary = f"{type_name}{{..}}"
-
-
-class TaggedEnumSynthProvider(EnumSynthProvider):
-    def update(self):
-        dyn_type_name = self.valobj.GetTypeName()
-        variant_name = dyn_type_name[dyn_type_name.rfind(':')+1:]
-        self.variant = self.valobj
-        print(f"{variant_name}: {dyn_type_name}")
-
-        if self.variant.IsValid() and self.variant.GetNumChildren() > self.skip_first:
-            if self.variant.GetChildAtIndex(self.skip_first).GetName() in ['0', '__0']:
-                print("TUPLE")
-                self.summary = variant_name + tuple_summary(self.variant)
+        if elem_count != 0:
+            if self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
+                self.variant_summary = f"{tuple_summary(self.variant)}"
             else:
-                self.summary = variant_name + '{...}'
-        else:
-            self.summary = variant_name
+                self.variant_summary = "{{..}}"
 
-        print(f"yee: {self.summary}")
+
+class OptionSynthProvider(GenericEnumSynthProvider):
+    def update(self):
+        super().update()
+        self.typename_summary = ""
+        # turn `Some<T>(..)` into `Some(..)`
+        if self.variant_name.startswith("Some"):
+            self.variant_name = "Some"
+        elif self.variant_name.startswith("None"):
+            self.variant_name = "None"
+
+
+class ResultSynthProvider(GenericEnumSynthProvider):
+    def update(self):
+        super().update()
+        self.typename_summary = ""
+        # turn `Ok<T>(..)` into `Ok(..)`
+        if self.variant_name.startswith("Ok"):
+            self.variant_name = "Ok"
+        elif self.variant_name.startswith("Err"):
+            self.variant_name = "Err"
+
+
+class CowSynthProvider(GenericEnumSynthProvider):
+    def update(self):
+        super().update()
+        self.typename_summary = ""
+        # turn `Ok<T>(..)` into `Ok(..)`
+        if self.variant_name.startswith("Borrowed"):
+            self.variant_name = "Borrowed"
+        elif self.variant_name.startswith("Owned"):
+            self.variant_name = "Owned"
 
 
 class MsvcTupleSynthProvider(RustSynthProvider):

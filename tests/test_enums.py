@@ -30,7 +30,7 @@ def test_basic_rust_enum(tmpdir):
         let x = Foo::A(42);
     """
     run_rust_test(tmpdir, src, {
-        "x": "Foo::A(..)"
+        "x": "Foo::A(42)"
     })
 
 
@@ -52,12 +52,12 @@ def test_multi_enum_variant(tmpdir):
 
 def test_option(tmpdir):
     src = """
-        let opt_str1: Option<&str> = Some("string");
+        let opt_str1: Option<&str> = Some("foobar");
         let opt_str2: Option<&str> = None;
         let opt_str3: Option<*const u8> = Some("other string".as_ptr());
     """
     run_rust_test(tmpdir, src, {
-        "opt_str1": "Some(\"string\")"
+        "opt_str1": "Some(\"foobar\")"
     })
 
 
@@ -84,7 +84,7 @@ def test_cow(tmpdir):
     })
 
 
-def _broken_test_lld_crash(tmpdir):  # TODO: send a bugreport to LLD
+def _broken_test_lld_crash(tmpdir):  # TODO: send a bugreport to LLDB
     src = """
         use std::num::NonZeroI64;
         #[repr(C)]
