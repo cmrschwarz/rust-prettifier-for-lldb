@@ -218,6 +218,31 @@ def string_from_ptr(pointer, length):
         raise Exception('ReadMemory error: %s', error.GetCString())
 
 
+# turns foo::Bar::Baz<T>::Quux<Q> into Quux<Q>
+def unscope_typename(type_name):
+    start = 0
+    level = 0
+    prev_was_quote = False
+    for i, c in enumerate(type_name):
+        if c == '<':
+            level += 1
+            continue
+        if c == '>':
+            level -= 1
+            continue
+        if c == ':':
+            if prev_was_quote:
+                if level == 0:
+                    start = i + 1
+                prev_was_quote = False
+                continue
+            prev_was_quote = True
+            continue
+        prev_was_quote = False
+
+    return type_name[start::]
+
+
 def get_template_params(type_name):
     params = []
     level = 0
@@ -464,7 +489,7 @@ class StdStringSynthProvider(StringLikeSynthProvider):
     def ptr_and_len(self, valobj):
         vec = gcm(valobj, 'vec')
         return (
-            read_unique_ptr(gcm(vec, 'buf', 'ptr')),
+            read_unique_ptr(gcm(vec, 'buf', 'inner', 'ptr', 'pointer')),
             gcm(vec, 'len').GetValueAsUnsigned()
         )
 
@@ -648,17 +673,19 @@ class EnumSynthProvider(RustSynthProvider):
             return self.variant_name + self.variant_summary
 
 
+def get_enum_discriminator_value(union, index):
+    obj = union.GetChildAtIndex(index)
+    if not obj or obj.GetNumChildren() < 1:
+        return None
+
+    discr = obj.GetChildAtIndex(0)
+    if not discr or discr.GetName() != "$discr$":
+        return None
+
+    return discr.GetValueAsUnsigned()
+
+
 class GenericEnumSynthProvider(EnumSynthProvider):
-    def get_discr_value(self, union, index):
-        obj = union.GetChildAtIndex(index)
-        if not obj or obj.GetNumChildren() < 1:
-            return None
-
-        discr = obj.GetChildAtIndex(0)
-        if not discr or discr.GetName() != "$discr$":
-            return None
-
-        return discr.GetValueAsUnsigned()
 
     def update(self):
         self.summary = ''
@@ -674,38 +701,63 @@ class GenericEnumSynthProvider(EnumSynthProvider):
 
         # at this point we assume this is a rust enum,
         # so if we fail further down the line we report an error
+        self.variant_name = '<invalid enum variant>'
+
         enum_type = self.valobj.GetType()
         if enum_type.IsPointerType():
             enum_name = "&" + \
-                enum_type.GetPointeeType().GetName().split('::')[-1]
+                unscope_typename(enum_type.GetPointeeType().GetName())
         else:
-            enum_name = enum_type.GetName().split('::')[-1]
+            enum_name = unscope_typename(enum_type.GetName())
         self.typename_summary = enum_name
-        self.variant_name = '<invalid enum variant>'
 
-        child_index = self.get_discr_value(union, 0)
-        other_index = 1
-        if child_index is None:
-            child_index = self.get_discr_value(union, 1)
-            other_index = 0
-            if child_index is None:
-                return
+        variant_count = union.GetNumChildren()
 
-        if child_index > union_child_count and union_child_count == 2:
-            child_index = other_index
+        discriminator = None
+        first_variant_without_discriminator = None
 
-        active_child_outer = union.GetChildAtIndex(child_index)
-        if active_child_outer.GetNumChildren() == 1 and child_index == other_index:
-            self.variant = active_child_outer.GetChildAtIndex(0)
-        elif active_child_outer.GetNumChildren() == 2:
-            self.variant = active_child_outer.GetChildAtIndex(1)
-        else:
+        for i in range(variant_count):
+            dc = get_enum_discriminator_value(union, i)
+            if dc is None:
+                if first_variant_without_discriminator is None:
+                    first_variant_without_discriminator = i
+                else:
+                    return  # multiple variants without discriminator
+            else:
+                if discriminator is not None:
+                    if dc != discriminator:
+                        return  # conflicting discriminator values
+                else:
+                    discriminator = dc
+
+        selected_variant = discriminator
+
+        if first_variant_without_discriminator is not None:
+            # probably using pointer or length value as a niche
+            # all of this is just based on trial and error, sorry
+            if discriminator == 0x8000000000000000:
+                if variant_count > 2:
+                    return
+                selected_variant = 1 - first_variant_without_discriminator
+            elif discriminator == 0 or discriminator >= variant_count:
+                selected_variant = first_variant_without_discriminator
+
+        if selected_variant >= variant_count:
             return
 
-        self.variant_name = self.variant.GetTypeName().split('::')[-1].split(':')[0]
-        elem_count = self.variant.GetNumChildren()
+        variant_outer = union.GetChildAtIndex(selected_variant)
+        if variant_outer.GetNumChildren() == 1 and selected_variant == first_variant_without_discriminator:
+            self.variant = variant_outer.GetChildAtIndex(0)
+        elif variant_outer.GetNumChildren() != 2:
+            return
+        else:
+            self.variant = variant_outer.GetChildAtIndex(1)
 
-        if elem_count != 0:
+        # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.
+        variant_typename = self.variant.GetType().GetName()
+        self.variant_name = unscope_typename(variant_typename)
+
+        if self.variant.GetNumChildren() != 0:
             if self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
                 self.variant_summary = f"{tuple_summary(self.variant)}"
             else:

@@ -79,8 +79,8 @@ def test_cow(tmpdir):
         let cow2 = Cow::<str>::Owned("my cow".into());
     """
     run_rust_test(tmpdir, src, {
-        "cow1": "Cow::Borrowed(\"their cow\")",
-        "cow2": "Cow::Owned(\"my cow\")"
+        "cow1": "Borrowed(\"their cow\")",
+        "cow2": "Owned(\"my cow\")",
     })
 
 
