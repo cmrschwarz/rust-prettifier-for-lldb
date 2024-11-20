@@ -39,7 +39,8 @@ def run_rust_test(
     )
 
     if result.returncode != 0:
-        assert result.stderr.decode("utf-8") == ""
+        stderr = result.stderr.decode("utf-8")
+        assert stderr == ""
         assert result.returncode == 0
 
     debugger: lldb.SBDebugger = lldb.SBDebugger.Create()
@@ -64,11 +65,11 @@ def run_rust_test(
     repl.HandleCommand(f"command script import {PRETTIFIER_PATH}", res)
     assert res.Succeeded()
 
-    for (name, summary) in expected_var_summaries.items():
+    for (name, expected_summary) in expected_var_summaries.items():
         var = frame.FindVariable(name)
         s = var.GetSummary()
         if s is None:
             s = var.GetValue()
-        assert s == summary
+        assert s == expected_summary
 
     lldb.SBDebugger.Destroy(debugger)
