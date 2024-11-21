@@ -45,12 +45,65 @@ fn enums() {
     println!("</enums>");
 }
 
+// TODO: implement dependencies for our test harness
+// and replace the hasmap access tests aswell as this.
+// We need some way to get deterministic ordering though.
+fn hashmap() {
+    use std::collections::HashMap;
+    use std::hash::{BuildHasherDefault, Hasher};
+    use std::iter::FromIterator;
+    #[derive(Default)]
+    struct IdentityHash(u64);
+    impl Hasher for IdentityHash {
+        fn write(&mut self, _: &[u8]) {
+            unimplemented!()
+        }
+        fn write_u8(&mut self, n: u8) {
+            self.0 = u64::from(n)
+        }
+        fn write_u16(&mut self, n: u16) {
+            self.0 = u64::from(n)
+        }
+        fn write_u32(&mut self, n: u32) {
+            self.0 = u64::from(n)
+        }
+        fn write_u64(&mut self, n: u64) {
+            self.0 = n
+        }
+        fn write_usize(&mut self, n: usize) {
+            self.0 = n as u64
+        }
+        fn write_i8(&mut self, n: i8) {
+            self.0 = n as u64
+        }
+        fn write_i16(&mut self, n: i16) {
+            self.0 = n as u64
+        }
+        fn write_i32(&mut self, n: i32) {
+            self.0 = n as u64
+        }
+        fn write_i64(&mut self, n: i64) {
+            self.0 = n as u64
+        }
+        fn write_isize(&mut self, n: isize) {
+            self.0 = n as u64
+        }
+        fn finish(&self) -> u64 {
+            self.0
+        }
+    }
+    let mut hm = HashMap::<i32, &'static str, BuildHasherDefault<IdentityHash>>::from_iter([
+        (3, "foo"),
+        (12, "bar"),
+    ]);
+    println!("</hashmap>");
+}
+
 fn collections() {
     let array = [1, 2, 3];
     let array_2 = [[1, 2, 3], [4, 5, 6]];
     let v = vec![1, 2, 3];
     let vd = VecDeque::from_iter([1, 2, 3]);
-    let hm = HashMap::<&'static str, i32>::from_iter([("foo", 3), ("bar", 12)]);
     println!("</collections>");
 }
 
@@ -84,6 +137,7 @@ fn demo() {
 
 fn main() {
     enums();
+    hashmap();
     collections();
     std_lib_types();
     demo();
