@@ -5,7 +5,7 @@
 
 Script to add Rust specific pretty-printing to the LLDB debugger.
 
-With the recent removal of Rust specific pretty printing from [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), debugging Rust, especially
+With the recent [removal](https://github.com/vadimcn/codelldb/issues/1166) of Rust specific pretty printing from [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), debugging Rust, especially
 enums, has become quite painful.
 
 This script is meant as a temporary fix until the situation of the
@@ -105,14 +105,14 @@ For the [lldb-dap](https://marketplace.visualstudio.com/items?itemName=llvm-vs-c
 
 
 ## Compatability
-This Script was developed for LLDB Version `19.0.0`, aswell as `19.1.0-codelldb` (Version currently bundled by [CodeLLDB](https://github.com/vadimcn/codelldb)).
+This script was developed for LLDB Version `19.0.0`, aswell as `19.1.0-codelldb` (version currently bundled by [CodeLLDB](https://github.com/vadimcn/codelldb)).
 
-At the time of writing, it is known to work well with the latest stable Version Rust (`1.82.0`). 
+At the time of writing, it is known to work well with the latest stable version Rust (`1.82.0`). 
 
 If you are using older versions of Rust or LLDB this script might not work for you.
 
 Due to the changing nature of the Rust Standard Library internals aswell
-as the LLDB represenation of them, this will never be more than a temporary hack
+as the LLDB representation of them, this will never be more than a temporary hack
 that's constantly in danger of becoming outdated.
 The hope is that [Rust's own  Pretty Printers](https://github.com/rust-lang/rust/blob/717f5df2c308dfb4b7b8e6c002c11fe8269c4011/src/etc/lldb_providers.py) will eventually ship in a functional state, superseeding this temporary bandaid.
 
@@ -131,5 +131,6 @@ and the [starting point](https://github.com/vadimcn/codelldb/blob/05502bf75e4e78
 
 ## Support
 
-If this script has helped you out a a Github Star :sparkles: would make me very happy, and maybe help demonstrate to the Rust Project Maintainers that a solid solution for debugging Rust is something
-that many people desire.   
+If this script has helped you out a a Github Star :sparkles: would make me very happy,
+and maybe help demonstrate to the Rust Project Maintainers that a solid solution 
+for debugging Rust is something that many people desire.   
