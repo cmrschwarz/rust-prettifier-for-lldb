@@ -1,4 +1,4 @@
-from harness import expect_command_output, expect_summaries, run_rust_test
+from test_harness import expect_command_output, expect_summaries, run_rust_test
 
 
 def test_basic_int(tmpdir):

@@ -1,4 +1,4 @@
-from harness import expect_summaries, expect_command_output
+from test_harness import expect_summaries, expect_command_output
 
 
 def test_basic_vec_summary(tmpdir):

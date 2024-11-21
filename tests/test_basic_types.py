@@ -1,4 +1,4 @@
-from harness import expect_summaries
+from test_harness import expect_summaries
 
 
 def test_u8(tmpdir):
