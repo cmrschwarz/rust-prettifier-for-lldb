@@ -262,12 +262,17 @@ def get_template_params(type_name):
     return params
 
 
-def obj_summary(valobj, obj_typename=None, unavailable='{...}', max_len=32):
+def obj_summary(valobj, obj_typename=None, unavailable='{...}', parenthesize_single_value=False, max_len=32):
     summary = valobj.GetSummary()
     if summary is not None:
+        if parenthesize_single_value:
+            return f"({summary})"
         return summary
     child_count = valobj.GetNumChildren()
     if child_count != 0:
+        if valobj.GetChildAtIndex(0).GetName() in ['0', '__0'] and obj_typename is None:
+            return tuple_summary(valobj)
+
         if obj_typename is None:
             summary = "{"
         else:
@@ -279,18 +284,24 @@ def obj_summary(valobj, obj_typename=None, unavailable='{...}', max_len=32):
             member_summary = f"{name}: {obj_summary(value)}"
             if i != 0:
                 summary += ", "
-            if len(summary) - 1 + len(member_summary) > max_len:
+            if len(summary) + 1 + len(member_summary) > max_len:
                 summary += ".."
                 break
             summary += member_summary
         summary += "}"
+        if obj_typename is not None and parenthesize_single_value:
+            return f"({summary})"
         return summary
 
     summary = valobj.GetValue()
     if summary is not None:
         if obj_typename is None:
-            return summary
-        return f"{obj_typename}({summary})"
+            res = summary
+        else:
+            res = f"{obj_typename}({summary})"
+        if parenthesize_single_value:
+            return f"({res})"
+        return res
 
     return unavailable
 
@@ -307,10 +318,22 @@ def sequence_summary(childern, maxsize=32):
     return s
 
 
-def tuple_summary(obj, skip_first=0):
-    fields = [obj_summary(obj.GetChildAtIndex(i))
-              for i in range(skip_first, obj.GetNumChildren())]
-    return '(%s)' % ', '.join(fields)
+def tuple_summary(obj, skip_first=0, max_len=32, include_parens=True):
+    if include_parens:
+        s = "("
+    else:
+        s = ""
+    for i in range(skip_first, obj.GetNumChildren()):
+        if i > 0:
+            s += ', '
+        os = obj_summary(obj.GetChildAtIndex(i), max_len=max_len-len(s)-1)
+        if len(s) + len(os) + int(include_parens) > max_len:
+            s += '..'
+            break
+        s += os
+    if include_parens:
+        s += ')'
+    return s
 
 
 class RustSynthProvider(object):
@@ -700,10 +723,7 @@ class EnumSynthProvider(RustSynthProvider):
         return self.variant.GetIndexOfChildWithName(name) - self.skip_first
 
     def get_summary(self):
-        if self.variant_summary == "":
-            value_summary = self.variant_name
-        else:
-            value_summary = f"{self.variant_name}({self.variant_summary})"
+        value_summary = self.variant_name + self.variant_summary
 
         if self.typename_summary != "":
             return self.typename_summary + "::" + value_summary
@@ -772,12 +792,12 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if first_variant_without_discriminator is not None:
             if variant_count == 1:
                 selected_variant = 0
-            # probably using pointer or length value as a niche
-            # all of this is just based on trial and error, sorry
-            elif discriminator == 0x8000000000000000:
-                if variant_count > 2:
-                    return
-                selected_variant = 1 - first_variant_without_discriminator
+            # probably a pointer based niche
+            # all of this is just based on trial and error
+            elif discriminator >= 0x8000000000000000:
+                selected_variant = discriminator - 0x8000000000000000
+                if selected_variant == first_variant_without_discriminator:
+                    selected_variant += 1
             elif discriminator == 0 or discriminator >= variant_count:
                 selected_variant = first_variant_without_discriminator
 
@@ -793,37 +813,35 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         else:
             variant_outer_subindex = 1
 
-        variant_raw = variant_outer.GetChildAtIndex(variant_outer_subindex)
         variant_outer.SetPreferSyntheticValue(True)
-        variant_synth = variant_outer.GetChildAtIndex(variant_outer_subindex)
+        variant = variant_outer.GetChildAtIndex(variant_outer_subindex)
 
         # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.
-        variant_typename = unscope_typename(variant_raw.GetType().GetName())
+        variant_typename = unscope_typename(variant.GetType().GetName())
         self.variant_name = variant_typename
 
-        variant_struct_typename = None
+        variant_deref = False
 
-        variant_child_count = variant_raw.GetNumChildren()
-        if variant_child_count == 1 and variant_raw.GetChildAtIndex(0).GetName() in ['0', '__0']:
-            raw_old = variant_raw
-            variant_raw = raw_old.GetChildAtIndex(0)
-            raw_old.SetPreferSyntheticValue(True)
-            variant_synth = raw_old.GetChildAtIndex(0)
-            variant_struct_typename = unscope_typename(raw_old.GetType().GetName())
-            variant_child_count = variant_raw.GetNumChildren()
+        variant_child_count = variant.GetNumChildren()
+        if variant_child_count == 1 and variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
+            variant = variant.GetChildAtIndex(0)
+            variant_child_count = variant.GetNumChildren()
+            variant_deref = True
 
-        if variant_child_count == 0 and variant_raw.GetValue() is None:
-            if variant_struct_typename is not None:
-                self.variant_summary = variant_struct_typename
-            else:
-                return
+        if variant_child_count == 0 and variant.GetValue() is None:
+            return
         else:
+            objname = None
+            if variant_deref and variant_child_count != 0:
+                objname = variant_typename
+
             self.variant_summary = obj_summary(
-                variant_raw,
-                obj_typename=variant_struct_typename,
+                variant,
+                obj_typename=objname,
+                parenthesize_single_value=True
             )
 
-        self.variant = variant_synth
+        self.variant = variant
         pass
 
 

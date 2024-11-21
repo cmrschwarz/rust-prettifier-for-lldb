@@ -43,10 +43,12 @@ def test_multi_enum_variant(tmpdir):
         }
         let a = RegularEnum::A;
         let b = RegularEnum::B(1, 2);
-        let c = RegularEnum::C{x: 1, y: 2.0};
+        let c = RegularEnum::C{x: 1, y: 2.5};
     """
     expect_summaries(tmpdir, src, {
-        "a": "RegularEnum::A"
+        "a": "RegularEnum::A",
+        "b": "RegularEnum::B(1, 2)",
+        "c": "RegularEnum::C{x: 1, y: 2.5}"
     })
 
 
@@ -81,6 +83,20 @@ def test_cow(tmpdir):
     expect_summaries(tmpdir, src, {
         "cow1": "Borrowed(\"their cow\")",
         "cow2": "Owned(\"my cow\")",
+    })
+
+
+def test_pointer_niche(tmpdir):
+    src = """
+        enum MyEnum {
+            A(&'static str),
+            B(i32),
+            C(Vec<i32>),
+        }
+        let myenum = MyEnum::B(42);
+    """
+    expect_summaries(tmpdir, src, {
+        "myenum": "MyEnum::B(42)",
     })
 
 
