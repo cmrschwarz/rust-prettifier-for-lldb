@@ -1,5 +1,8 @@
 # Rust Prettifier for LLDB
 
+[![CI](https://github.com/cmrschwarz/rust-prettifier-for-lldb/actions/workflows/ci.yml/badge.svg)](https://github.com/cmrschwarz/rust-prettifier-for-lldb/actions/workflows/ci.yml)
+
+
 Script to add Rust specific pretty-printing to the LLDB debugger.
 
 With the recent removal of Rust specific pretty printing from [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), debugging Rust, especially
