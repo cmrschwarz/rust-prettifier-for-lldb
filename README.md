@@ -28,6 +28,10 @@ To load the script into your lldb debugger instance, execute the following lldb 
 command script import <path to rust_prettifier_for_lldb.py>
 ```
 
+[`rust_prettifier_for_lldb.py`](https://raw.githubusercontent.com/cmrschwarz/rust-prettifier-for-lldb/refs/heads/main/rust_prettifier_for_lldb.py) is the only file from this Repository
+that you actually need. You can download it separately from the 
+[Releases](https://github.com/cmrschwarz/rust-prettifier-for-lldb/releases) section.
+
 ## Usage with VSCode Debug Adapters
 To use this script with VSCode debug adapters you have to instruct them
 to execute the same lldb command as above before the actual debugging session.
