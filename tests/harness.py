@@ -97,8 +97,10 @@ def compare_command_outputs(debugger, frame: Any, commands: list[tuple[str, str]
 
     for (cmd, expected_output) in commands:
         repl.HandleCommand(cmd, res)
-        assert res.Succeeded()
         output = res.GetOutput()
+        error = res.GetError()
+        assert error == ""
+        assert res.Succeeded()
         assert output == expected_output
 
 

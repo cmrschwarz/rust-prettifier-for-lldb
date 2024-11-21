@@ -1,4 +1,4 @@
-from harness import expect_summaries, run_rust_test
+from harness import expect_command_output, expect_summaries, run_rust_test
 
 
 def test_basic_int(tmpdir):
@@ -18,7 +18,7 @@ def test_c_style_enum(tmpdir):
         let x = CStyleEnum::A;
     """
     expect_summaries(tmpdir, src, {
-        "x": "A"  # TODO: change this to be Foo::A
+        "x": "A"  # TODO: change this to be Foo::A?
     })
 
 
@@ -100,6 +100,20 @@ def test_struct_enum_synthetic(tmpdir):
         assert foo is not None
 
     run_rust_test(tmpdir, src, compare_synth)
+
+
+def test_access_vec_in_enum(tmpdir):
+    src = """
+        enum Foo{
+            A(Vec<i32>),
+            B(Vec<i64>)
+        }
+        let x = Foo::A(vec![1, 2, 3]);
+    """
+    expect_command_output(tmpdir, src, [
+        ("settings set target.enable-synthetic-value true", ""),
+        ("v x[1]", "(int) x[1] = 2\n")
+    ])
 
 
 def _broken_test_lld_crash(tmpdir):  # TODfooO: send a bugreport to LLDB

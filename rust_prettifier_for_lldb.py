@@ -785,38 +785,46 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             return
 
         variant_outer = union.GetChildAtIndex(selected_variant)
+
         if variant_outer.GetNumChildren() == 1 and selected_variant == first_variant_without_discriminator:
-            self.variant = variant_outer.GetChildAtIndex(0)
+            variant_outer_subindex = 0
         elif variant_outer.GetNumChildren() != 2:
             return
         else:
-            self.variant = variant_outer.GetChildAtIndex(1)
+            variant_outer_subindex = 1
+
+        variant_raw = variant_outer.GetChildAtIndex(variant_outer_subindex)
+        variant_outer.SetPreferSyntheticValue(True)
+        variant_synth = variant_outer.GetChildAtIndex(variant_outer_subindex)
 
         # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.
-        variant_typename = unscope_typename(self.variant.GetType().GetName())
+        variant_typename = unscope_typename(variant_raw.GetType().GetName())
         self.variant_name = variant_typename
 
         variant_struct_typename = None
-        variant_child_count = self.variant.GetNumChildren()
-        if variant_child_count == 1 and self.variant.GetChildAtIndex(0).GetName() in ['0', '__0']:
-            self.variant = self.variant.GetChildAtIndex(0)
-            variant_struct_typename = unscope_typename(self.variant.GetType().GetName())
-            variant_child_count = self.variant.GetNumChildren()
 
-        if variant_child_count == 0 and self.variant.GetValue() is None:
+        variant_child_count = variant_raw.GetNumChildren()
+        if variant_child_count == 1 and variant_raw.GetChildAtIndex(0).GetName() in ['0', '__0']:
+            raw_old = variant_raw
+            variant_raw = raw_old.GetChildAtIndex(0)
+            raw_old.SetPreferSyntheticValue(True)
+            variant_synth = raw_old.GetChildAtIndex(0)
+            variant_struct_typename = unscope_typename(raw_old.GetType().GetName())
+            variant_child_count = variant_raw.GetNumChildren()
+
+        if variant_child_count == 0 and variant_raw.GetValue() is None:
             if variant_struct_typename is not None:
                 self.variant_summary = variant_struct_typename
-            return
+            else:
+                return
+        else:
+            self.variant_summary = obj_summary(
+                variant_raw,
+                obj_typename=variant_struct_typename,
+            )
 
-        max_len = 20
-        if variant_struct_typename is not None:
-            max_len = 0
-
-        self.variant_summary = obj_summary(
-            self.variant,
-            obj_typename=variant_struct_typename,
-            max_len=max_len
-        )
+        self.variant = variant_synth
+        pass
 
 
 class OptionSynthProvider(GenericEnumSynthProvider):

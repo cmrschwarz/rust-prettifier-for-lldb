@@ -20,6 +20,7 @@ enum A {
     X,
     Y,
     Z,
+    V(Vec<i32>),
     D(StructWithManyMembers),
 }
 
@@ -31,6 +32,10 @@ fn enums() {
         ..Default::default()
     };
     let a = A::D(foo);
+
+    let vec_in_enum = A::V(vec![1, 2, 3]);
+
+    let long_vec_in_enum = A::V(Vec::from_iter(0..100));
 
     println!("</enums>");
 }
