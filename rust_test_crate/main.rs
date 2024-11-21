@@ -47,7 +47,22 @@ fn collections() {
     println!("</collections>");
 }
 
+enum MyEnum {
+    A(&'static str),
+    B(i32),
+    C(Vec<i32>),
+}
+
+fn demo() {
+    let myvec = vec![1, 2, 3];
+    let mydeque = VecDeque::from_iter([4, 5, 6]);
+    let myenum = MyEnum::B(42);
+    let mystr = String::from("asdf");
+    println!("</demo>");
+}
+
 fn main() {
     enums();
     collections();
+    demo();
 }

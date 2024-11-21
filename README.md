@@ -120,4 +120,5 @@ and the [starting point](https://github.com/vadimcn/codelldb/blob/05502bf75e4e78
 
 ## Support
 
-If this script has helped you out a a small [Github Sponsors Donation](https://github.com/sponsors/cmrschwarz) or a Github Star would make me very happy, and show the Rust Project Maintainers that a solid solution for debugging Rust is worth their time.   
+If this script has helped you out a a Github Star :sparkles: would make me very happy, and maybe help demonstrate to the Rust Project Maintainers that a solid solution for debugging Rust is something
+that many people desire.   
