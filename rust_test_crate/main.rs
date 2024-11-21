@@ -8,6 +8,8 @@ use std::{
     rc::Rc,
 };
 
+use core::iter::FromIterator;
+
 #[derive(Default)]
 struct StructWithManyMembers {
     x: i32,
@@ -45,6 +47,7 @@ fn enums() {
 
 fn collections() {
     let array = [1, 2, 3];
+    let array_2 = [[1, 2, 3], [4, 5, 6]];
     let v = vec![1, 2, 3];
     let vd = VecDeque::from_iter([1, 2, 3]);
     let hm = HashMap::<&'static str, i32>::from_iter([("foo", 3), ("bar", 12)]);

@@ -51,3 +51,25 @@ def test_box(tmpdir):
     expect_command_output(tmpdir, src, [
         ("v *x", "(int) *x = 42\n"),
     ])
+
+
+def test_tuple(tmpdir):
+    src = """
+        let x = (42, "foo");
+    """
+    # TODO: currently raw summary text is just the pointer hex value,
+    # consider showing Box(T) ?
+    expect_summaries(tmpdir, src, {
+        "x": "(42, \"foo\")",
+    })
+
+
+def test_tuple_access(tmpdir):
+    src = """
+        let x = (42, "foo");
+    """
+    # '(int) 1'. meh.
+    expect_command_output(tmpdir, src, [
+        ("v x[0]", "(int) 0 = 42\n"),
+        ("v x.0", "(int) 0 = 42\n"),
+    ])

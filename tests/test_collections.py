@@ -29,13 +29,13 @@ def test_basic_vec_deque(tmpdir):
     })
 
 
-def test_hashmap(tmpdir):
+def test_hashmap_access(tmpdir):
     src = """
         use std::collections::HashMap;
+        use std::iter::FromIterator;
         let hm = HashMap::<&'static str, i32>::from_iter([("foo", 3), ("bar", 12)]);
     """
-    # TODO: currently raw summary text is just the pointer hex value,
-    # consider showing Box(T) ?
+    # TODO: seems a bit sketchy. Can we improve this?
     expect_command_output(tmpdir, src, [
-        ("v hm[0]", "(int) hm[0] = 3\n")
+        ("v hm[0].1", "(int) 1 = 3\n")
     ])

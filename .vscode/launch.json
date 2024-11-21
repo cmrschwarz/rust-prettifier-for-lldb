@@ -34,6 +34,7 @@
                     "kind": "bin"
                 }
             },
+            "expressions": "simple",
             "preRunCommands": [
                 "command script import ${workspaceFolder}/rust_prettifier_for_lldb.py"
             ]

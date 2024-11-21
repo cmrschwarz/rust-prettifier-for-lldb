@@ -401,8 +401,13 @@ class TupleSynthProvider(RustSynthProvider):
     def num_children(self):
         return self.valobj.GetNumChildren()
 
+    def get_index_of_child(self, name):
+        return int(name.lstrip('_[').rstrip(']'))
+
     def get_child_at_index(self, index):
-        return self.valobj.GetChildAtIndex(index)
+        value = self.valobj.GetChildAtIndex(index)
+        value = self.valobj.CreateValueFromData(str(index), value.GetData(), value.GetType())
+        return value
 
 
 class ArrayLikeSynthProvider(RustSynthProvider):
@@ -1040,7 +1045,10 @@ class StdHashMapSynthProvider(RustSynthProvider):
     def get_child_at_index(self, index):
         bucket_idx = self.valid_indices[index]
         item = self.buckets.GetChildAtIndex(bucket_idx)
-        return item.CreateChildAtOffset('[%d]' % index, 0, item.GetType())
+        item.SetPreferSyntheticValue(True)
+        v = item.CreateChildAtOffset('[%d]' % index, 0, item.GetType())
+        v.SetPreferSyntheticValue(True)
+        return v
 
     def get_index_of_child(self, name):
         return int(name.lstrip('[').rstrip(']'))
