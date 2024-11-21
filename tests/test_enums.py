@@ -94,10 +94,13 @@ def test_struct_enum_synthetic(tmpdir):
         let foo = Foo::Bar(Baz{x: 1, y: 2});
     """
 
-    def compare_synth(dbg, frame):
+    def compare_synth(_dbg, frame):
         foo = frame.FindVariable("foo")
-        _ = foo.GetSummary()
-        assert foo is not None
+        foo_s = foo.GetSummary()
+        assert foo_s == 'Foo::Bar(Bar{x: 1, y: 2})'
+        x = foo.GetChildAtIndex(0)
+        x_s = x.GetValue()
+        assert x_s == "1"
 
     run_rust_test(tmpdir, src, compare_synth)
 

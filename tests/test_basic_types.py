@@ -21,11 +21,12 @@ def test_char(tmpdir):
     })
 
 
-def test_basic_vec_deque(tmpdir):
+def test_str(tmpdir):
     src = """
-        use std::collections::VecDeque;
-        let x = VecDeque::from([1,2,3]);
+        let x: &str = "foo";
+        let y: String = "bar".into();
     """
     expect_summaries(tmpdir, src, {
-        "x": "(3) VecDeque[1, 2, 3]"
+        "x": "\"foo\"",
+        "y": "\"bar\""
     })
