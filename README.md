@@ -12,6 +12,13 @@ This script is meant as a temporary fix until the situation of the
 ecosystem improves, see [Compatability](#compatability).
 
 
+### With Prettifier
+![After](after.png)
+
+
+### Without Prettifier
+![Before](before.png)
+
 
 ## Standalone LLDB
 

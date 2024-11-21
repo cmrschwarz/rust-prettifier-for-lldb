@@ -25,17 +25,27 @@ enum A {
 }
 
 fn enums() {
-    let vd = VecDeque::from([1, 2, 3]);
-    let foo = StructWithManyMembers {
-        x: 1,
-        y: 3.2,
-        ..Default::default()
-    };
-    let a = A::D(foo);
-
-    let vec_in_enum = A::V(vec![1, 2, 3]);
-
-    let long_vec_in_enum = A::V(Vec::from_iter(0..100));
+    //let vd = VecDeque::from([1, 2, 3]);
+    //let foo = StructWithManyMembers {
+    //    x: 1,
+    //    y: 3.2,
+    //    ..Default::default()
+    //};
+    //let a = A::D(foo);
+    //
+    //let vec_in_enum = A::V(vec![1, 2, 3]);
+    //
+    //let long_vec_in_enum = A::V(Vec::from_iter(0..100));
+    enum MyEnum {
+        A,
+        B(&'static str),
+        C { x: i32, y: f32 },
+        D(Vec<i32>),
+    }
+    let a = MyEnum::A;
+    let b = MyEnum::B("foo");
+    let c = MyEnum::C { x: 1, y: 2.5 };
+    let d = MyEnum::D(vec![1, 2, 3]);
 
     println!("</enums>");
 }
