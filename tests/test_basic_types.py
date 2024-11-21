@@ -1,4 +1,4 @@
-from test_harness import expect_summaries
+from test_harness import expect_command_output, expect_summaries
 
 
 def test_u8(tmpdir):
@@ -30,3 +30,24 @@ def test_str(tmpdir):
         "x": "\"foo\"",
         "y": "\"bar\""
     })
+
+
+def test_rc(tmpdir):
+    src = """
+        use std::rc::Rc;
+        let x = Rc::new(42);
+    """
+    expect_summaries(tmpdir, src, {
+        "x": "(refs:1) 42",
+    })
+
+
+def test_box(tmpdir):
+    src = """
+        let x = Box::new(42);
+    """
+    # TODO: currently raw summary text is just the pointer hex value,
+    # consider showing Box(T) ?
+    expect_command_output(tmpdir, src, [
+        ("v *x", "(int) *x = 42\n"),
+    ])

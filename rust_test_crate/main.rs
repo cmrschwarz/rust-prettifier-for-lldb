@@ -3,7 +3,10 @@
 // Use commands like `script lldb.frame.FindVariable("foo").GetNonSyntheticValue()`
 // for interactive testing.
 
-use std::collections::VecDeque;
+use std::{
+    collections::{HashMap, VecDeque},
+    rc::Rc,
+};
 
 #[derive(Default)]
 struct StructWithManyMembers {
@@ -25,17 +28,44 @@ enum A {
 }
 
 fn enums() {
-    //let vd = VecDeque::from([1, 2, 3]);
-    //let foo = StructWithManyMembers {
-    //    x: 1,
-    //    y: 3.2,
-    //    ..Default::default()
-    //};
-    //let a = A::D(foo);
-    //
-    //let vec_in_enum = A::V(vec![1, 2, 3]);
-    //
-    //let long_vec_in_enum = A::V(Vec::from_iter(0..100));
+    let vd = VecDeque::from([1, 2, 3]);
+    let foo = StructWithManyMembers {
+        x: 1,
+        y: 3.2,
+        ..Default::default()
+    };
+    let a = A::D(foo);
+
+    let vec_in_enum = A::V(vec![1, 2, 3]);
+
+    let long_vec_in_enum = A::V(Vec::from_iter(0..100));
+
+    println!("</enums>");
+}
+
+fn collections() {
+    let array = [1, 2, 3];
+    let v = vec![1, 2, 3];
+    let vd = VecDeque::from_iter([1, 2, 3]);
+    let hm = HashMap::<&'static str, i32>::from_iter([("foo", 3), ("bar", 12)]);
+    println!("</collections>");
+}
+
+fn std_lib_types() {
+    let x = Box::new(42);
+
+    let y = Box::new(Rc::new(42));
+
+    println!("</std_lib_types>");
+}
+
+enum MyEnum {
+    A(&'static str),
+    B(i32),
+    C(Vec<i32>),
+}
+
+fn demo() {
     enum MyEnum {
         A,
         B(&'static str),
@@ -46,33 +76,12 @@ fn enums() {
     let b = MyEnum::B("foo");
     let c = MyEnum::C { x: 1, y: 2.5 };
     let d = MyEnum::D(vec![1, 2, 3]);
-
-    println!("</enums>");
-}
-
-fn collections() {
-    let array = [1, 2, 3];
-    let v = vec![1, 2, 3];
-    let vd = VecDeque::from_iter([1, 2, 3]);
-    println!("</collections>");
-}
-
-enum MyEnum {
-    A(&'static str),
-    B(i32),
-    C(Vec<i32>),
-}
-
-fn demo() {
-    let myvec = vec![1, 2, 3];
-    let mydeque = VecDeque::from_iter([4, 5, 6]);
-    let myenum = MyEnum::B(42);
-    let mystr = String::from("asdf");
     println!("</demo>");
 }
 
 fn main() {
     enums();
     collections();
+    std_lib_types();
     demo();
 }
