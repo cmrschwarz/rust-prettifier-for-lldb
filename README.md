@@ -109,6 +109,9 @@ This script was developed for LLDB Version `19.0.0`, aswell as `19.1.0-codelldb`
 
 At the time of writing, it is known to work well with the latest stable version Rust (`1.82.0`). 
 
+Initially this did not support Windows, although @jesnor was able to get it partially working.
+Any improvements on that front would of course be welcomed.
+
 If you are using older versions of Rust or LLDB this script might not work for you.
 
 Due to the changing nature of the Rust Standard Library internals aswell
