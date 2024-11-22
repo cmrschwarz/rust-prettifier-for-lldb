@@ -149,8 +149,12 @@ def initialize_category(debugger, internal_dict):
         lldb.SBDebugger.SetInternalVariable('target.process.thread.step-avoid-regexp',
                                             '^<?(std|core|alloc)::', debugger.GetInstanceName())
 
-    max_string_summary_langth = debugger.GetSetting(
-        'target.max-string-summary-length').GetIntegerValue()
+    # The GetSetting method is not available on older LLDB versions
+    try:
+        max_string_summary_langth = debugger.GetSetting(
+            'target.max-string-summary-length').GetIntegerValue()
+    except:
+        pass
 
 
 def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
@@ -963,19 +967,34 @@ class MsvcEnum2SynthProvider(EnumSynthProvider):
 
     def update(self):
         tparams = get_template_params(self.valobj.GetTypeName())
+        
+        if len(tparams) == 1:  # Regular enum
+            discr = gcm(self.valobj, 'tag')
+            self.variant = gcm(self.valobj, 'variant' +
+                               str(discr.GetValueAsUnsigned())).GetChildAtIndex(0)
+        else:  # Niche enum
+            dataful_min = int(tparams[1])
+            dataful_max = int(tparams[2])
+            discr = gcm(self.valobj, 'tag')
+            if dataful_min <= discr.GetValueAsUnsigned() <= dataful_max:
+                self.variant = gcm(self.valobj, 'dataful_variant')
+
+        names = re.split("::", self.variant.GetTypeName())
+        variant_name = names[-1]
         self.type_name = tparams[0]
 
-    def has_children(self):
-        return True
+        if self.variant.IsValid() and self.variant.GetNumChildren() > self.skip_first:
+            if self.variant.GetChildAtIndex(self.skip_first).GetName() == '__0':
+                self.is_tuple_variant = True
+                self.summary = variant_name + \
+                    tuple_summary(self.variant, skip_first=self.skip_first)
+            else:
+                self.summary = variant_name + " " + obj_summary(self.variant)
+        else:
+            self.summary = variant_name
 
-    def get_child_at_index(self, index):
-        return self.valobj.GetChildAtIndex(index)
-
-    def get_index_of_child(self, name):
-        return self.valobj.GetChildIndex(name)
-
-    def get_type_name(self):
-        return self.type_name
+    def get_summary(self):
+        return self.summary
 
 
 class StdHashMapSynthProvider(RustSynthProvider):
