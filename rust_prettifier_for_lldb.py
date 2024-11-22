@@ -149,6 +149,7 @@ def initialize_category(debugger, internal_dict):
         lldb.SBDebugger.SetInternalVariable('target.process.thread.step-avoid-regexp',
                                             '^<?(std|core|alloc)::', debugger.GetInstanceName())
 
+    # The GetSetting method is not available on older LLDB versions
     try:
         max_string_summary_langth = debugger.GetSetting(
             'target.max-string-summary-length').GetIntegerValue()
