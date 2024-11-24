@@ -51,6 +51,8 @@ def initialize_category(debugger, internal_dict):
     if version_string_match is not None:
         lldb_major_version = version_string_match.groups(1)
 
+    # remove previous conflicting prettifiers potentially added e.g. by CodeLLDB
+    rust_category = debugger.DeleteCategory('Rust')
     rust_category = debugger.CreateCategory('Rust')
     # rust_category.AddLanguage(lldb.eLanguageTypeRust)
     rust_category.SetEnabled(True)
@@ -973,7 +975,7 @@ class MsvcEnum2SynthProvider(EnumSynthProvider):
 
     def update(self):
         tparams = get_template_params(self.valobj.GetTypeName())
-        
+
         if len(tparams) == 1:  # Regular enum
             discr = gcm(self.valobj, 'tag')
             self.variant = gcm(self.valobj, 'variant' +
