@@ -67,7 +67,11 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(MsvcTupleSynthProvider, r'^tuple\$?<.+>$', True)
 
     attach_synthetic_to_type(CharSynthProvider, 'char32_t')
+
+    # there is no 1 byte char type in rust, so these have to be u8/i8
     attach_synthetic_to_type(U8SynthProvider, 'unsigned char')
+    attach_synthetic_to_type(I8SynthProvider, 'char')
+
     attach_synthetic_to_type(StrSliceSynthProvider, '&str')
     attach_synthetic_to_type(StrSliceSynthProvider, 'str*')
     # *-windows-msvc uses this name since 1.5?
@@ -376,8 +380,6 @@ class RustSynthProvider(object):
 
 
 class CharSynthProvider(RustSynthProvider):
-    summary = ''
-
     def update(self):
         value = self.valobj.GetValueAsUnsigned()
         c = chr(value)
@@ -388,10 +390,14 @@ class CharSynthProvider(RustSynthProvider):
 
 
 class U8SynthProvider(RustSynthProvider):
-    summary = ''
-
     def update(self):
         value = self.valobj.GetValueAsUnsigned()
+        self.summary = f"{int(value)}"
+
+
+class I8SynthProvider(RustSynthProvider):
+    def update(self):
+        value = self.valobj.GetValueAsSigned()
         self.summary = f"{int(value)}"
 
 

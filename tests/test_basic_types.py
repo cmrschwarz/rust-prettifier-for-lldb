@@ -10,6 +10,24 @@ def test_u8(tmpdir):
     })
 
 
+# regression test for #2
+def test_i8(tmpdir):
+    src = """
+        let x: i8 = -128;
+    """
+
+    # TODO: we would prefer to get rid of the
+    # '\x80' here, but I have no idea how.
+    # Disabling the cplusplus Category and other potentially conflicting
+    # Sources did unfortunately not help.
+    expect_command_output(tmpdir, src, [
+        ("v x", "(char) x = '\\x80' -128\n")
+    ])
+    expect_summaries(tmpdir, src, {
+        "x": "-128",
+    })
+
+
 def test_char(tmpdir):
     src = """
         let x: char = 'A';
@@ -18,6 +36,9 @@ def test_char(tmpdir):
     expect_summaries(tmpdir, src, {
         "x": "'A'",
         "y": "U+0x0000000A"
+    })
+    expect_command_output(tmpdir, src, {
+        ("v x", "(char32_t) x = U+0x00000041 'A'\n")
     })
 
 
