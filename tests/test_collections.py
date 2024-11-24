@@ -19,6 +19,20 @@ def test_basic_vec_child_access(tmpdir):
     ])
 
 
+# regression test for #2
+def test_vec_i8(tmpdir):
+    src = """
+        let x = vec![1i8, -1i8, 'A' as i8];
+    """
+    expect_summaries(tmpdir, src, {
+        "x": "(3) vec![1, -1, 65]"
+    })
+    # TODO: see test_basic_types.test_i8 for explanation
+    expect_command_output(tmpdir, src, [
+        ("v x[1]", "(char) x[1] = '\\xff' -1\n")
+    ])
+
+
 def test_basic_vec_deque(tmpdir):
     src = """
         use std::collections::VecDeque;
