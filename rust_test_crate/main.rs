@@ -10,6 +10,18 @@ use std::{
 
 use core::iter::FromIterator;
 
+fn basic_datatypes() {
+    let x: char = 'A';
+    let y: i8 = 65;
+    let z: i8 = -128;
+    let w: u8 = 65;
+
+    let xx: i16 = 1000;
+    let xy: u16 = 1000;
+
+    println!("</basic_datatypes>")
+}
+
 #[derive(Default)]
 struct StructWithManyMembers {
     x: i32,
@@ -104,6 +116,11 @@ fn collections() {
     let array_2 = [[1, 2, 3], [4, 5, 6]];
     let v = vec![1, 2, 3];
     let vd = VecDeque::from_iter([1, 2, 3]);
+
+    let vec_i8 = vec![3i8, -1i8, 'A' as i8];
+
+    let vec_char = vec!['A', 'B', 'C'];
+
     println!("</collections>");
 }
 
@@ -136,6 +153,7 @@ fn demo() {
 }
 
 fn main() {
+    basic_datatypes();
     enums();
     hashmap();
     collections();
