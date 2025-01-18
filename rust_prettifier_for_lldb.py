@@ -37,11 +37,12 @@ module = sys.modules[__name__]
 rust_category = None
 lldb_major_version = None
 
-max_string_summary_langth = 1024
+MAX_STRING_SUMMARY_LENGTH = 1024
+MAX_SEQUENCE_SUMMARY_LENGTH = 10
 
 
 def initialize_category(debugger, internal_dict):
-    global rust_category, max_string_summary_langth, lldb_major_version
+    global rust_category, MAX_STRING_SUMMARY_LENGTH, lldb_major_version
 
     version_string_match = re.match(
         r"lldb version (\d+)\.\d+",
@@ -157,7 +158,7 @@ def initialize_category(debugger, internal_dict):
 
     # The GetSetting method is not available on older LLDB versions
     try:
-        max_string_summary_langth = debugger.GetSetting(
+        MAX_STRING_SUMMARY_LENGTH = debugger.GetSetting(
             'target.max-string-summary-length').GetIntegerValue()
     except:
         pass
@@ -316,15 +317,16 @@ def obj_summary(valobj, obj_typename=None, unavailable='{...}', parenthesize_sin
     return unavailable
 
 
-def sequence_summary(childern, maxsize=32):
+def sequence_summary(childern, max_len=MAX_STRING_SUMMARY_LENGTH, max_elem_count= MAX_SEQUENCE_SUMMARY_LENGTH):
     s = ''
-    for child in childern:
+    for (i, child) in enumerate(childern):
         if len(s) > 0:
             s += ', '
-        s += obj_summary(child)
-        if len(s) > maxsize:
-            s += ', ...'
+        summary = obj_summary(child)
+        if len(s + summary) > max_len or i >= max_elem_count:
+            s += '...'
             break
+        s += summary
     return s
 
 
@@ -541,8 +543,8 @@ class StringLikeSynthProvider(ArrayLikeSynthProvider):
 
     def get_summary(self):
         strval = string_from_ptr(self.ptr, min(
-            self.len, max_string_summary_langth))
-        if self.len > max_string_summary_langth:
+            self.len, MAX_STRING_SUMMARY_LENGTH))
+        if self.len > MAX_STRING_SUMMARY_LENGTH:
             strval += u'...'
         return u'"%s"' % strval
 
@@ -768,7 +770,9 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if self.valobj.GetNumChildren() != 1:
             return
 
+        self.valobj.SetPreferSyntheticValue(False)
         union = self.valobj.GetChildAtIndex(0)
+        union.SetPreferSyntheticValue(False)
         union_child_count = union.GetNumChildren()
         if union.GetName() != "$variants$" or union_child_count < 1:
             return
@@ -813,9 +817,10 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             # all of this is just based on trial and error
             elif discriminator >= 0x8000000000000000:
                 selected_variant = discriminator - 0x8000000000000000
-                if selected_variant == first_variant_without_discriminator:
-                    selected_variant += 1
-            elif discriminator == 0 or discriminator >= variant_count:
+                if selected_variant >= first_variant_without_discriminator:
+                    if selected_variant + 1 < variant_count:
+                        selected_variant += 1
+            elif discriminator == 0 or discriminator >= variant_count :
                 selected_variant = first_variant_without_discriminator
 
         if selected_variant >= variant_count:
@@ -846,20 +851,23 @@ class GenericEnumSynthProvider(EnumSynthProvider):
             variant_deref = True
 
         if variant_child_count == 0 and variant.GetValue() is None:
+            summary = variant.GetSummary()
+            if summary is not None:
+                self.variant = variant
+                self.variant_summary = f"({summary})"
             return
-        else:
-            objname = None
-            if variant_deref and variant_child_count != 0:
-                objname = variant_typename
 
-            self.variant_summary = obj_summary(
-                variant,
-                obj_typename=objname,
-                parenthesize_single_value=True
-            )
+        objname = None
+        if variant_deref and variant_child_count != 0:
+            objname = variant_typename
+
+        self.variant_summary = obj_summary(
+            variant,
+            obj_typename=objname,
+            parenthesize_single_value=True
+        )
 
         self.variant = variant
-        pass
 
 
 class OptionSynthProvider(GenericEnumSynthProvider):

@@ -18,6 +18,13 @@ def test_basic_vec_child_access(tmpdir):
         ("v x[1]", "(int) x[1] = 2\n")
     ])
 
+def test_basic_vec_sequence_limits(tmpdir):
+    src = """
+        let x = vec![1,2,3,4,5,6,7,8,9,10,11];
+    """
+    expect_summaries(tmpdir, src, {
+        "x": "(11) vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...]"
+    })
 
 # regression test for #2
 def test_vec_i8(tmpdir):

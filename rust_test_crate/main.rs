@@ -41,6 +41,36 @@ enum A {
     D(StructWithManyMembers),
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub enum B {
+    Foo(Box<B>),
+    Bar(Box<[B; 2]>),
+    Baz(i32),
+}
+
+pub enum LargeEarly {
+    Foo(Vec<i32>),
+
+    Bar,
+    Baz,
+    Quux,
+}
+
+pub enum LargeMiddle {
+    Foo,
+    Bar,
+    Baz(Vec<i32>),
+    Quux,
+}
+
+pub enum LargeLate {
+    Foo,
+
+    Bar,
+    Baz,
+    Quux(Vec<i32>),
+}
+
 fn enums() {
     let vd = VecDeque::from([1, 2, 3]);
     let foo = StructWithManyMembers {
@@ -53,6 +83,23 @@ fn enums() {
     let vec_in_enum = A::V(vec![1, 2, 3]);
 
     let long_vec_in_enum = A::V(Vec::from_iter(0..100));
+
+    let b = B::Foo(Box::new(B::Baz(42)));
+
+    let le1 = LargeEarly::Foo(vec![1]);
+    let le2 = LargeEarly::Bar;
+    let le3 = LargeEarly::Baz;
+    let le4 = LargeEarly::Quux;
+
+    let lm1 = LargeMiddle::Foo;
+    let lm2 = LargeMiddle::Bar;
+    let lm3 = LargeMiddle::Baz(vec![1]);
+    let lm4 = LargeMiddle::Quux;
+
+    let ll2 = LargeLate::Foo;
+    let ll3 = LargeLate::Bar;
+    let ll4 = LargeLate::Baz;
+    let ll1 = LargeLate::Quux(vec![1]);
 
     println!("</enums>");
 }
@@ -141,14 +188,15 @@ enum MyEnum {
 fn demo() {
     enum MyEnum {
         A,
-        B(&'static str),
         C { x: i32, y: f32 },
         D(Vec<i32>),
     }
     let a = MyEnum::A;
-    let b = MyEnum::B("foo");
     let c = MyEnum::C { x: 1, y: 2.5 };
     let d = MyEnum::D(vec![1, 2, 3]);
+
+    let cd = VecDeque::from_iter([1, 2, 3, 5, 423]);
+
     println!("</demo>");
 }
 

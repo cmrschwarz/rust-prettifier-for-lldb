@@ -51,6 +51,72 @@ def test_multi_enum_variant(tmpdir):
         "c": "RegularEnum::C{x: 1, y: 2.5}"
     })
 
+def test_enum_with_niche_in_early_variant(tmpdir):
+    src = """
+        pub enum E {
+            Foo(Vec<i32>),
+            Bar,
+            Baz,
+            Quux,
+        }
+        let foo = E::Foo(vec![]);
+        let bar = E::Bar;
+        let baz = E::Baz;
+        let quux = E::Quux;
+    """
+    expect_summaries(tmpdir, src, {
+        "foo": "E::Foo((0) vec![])",
+        "bar": "E::Bar",
+        "baz": "E::Baz",
+        "quux": "E::Quux",
+    })
+
+
+
+def test_enum_with_niche_in_middle_variant(tmpdir):
+    src = """
+        pub enum E {
+            Foo,
+            Bar,
+            Baz(Vec<i32>),
+            Quux,
+        }
+        let foo = E::Foo;
+        let bar = E::Bar;
+        let baz = E::Baz(vec![1]);
+        let quux = E::Quux;
+    """
+    expect_summaries(tmpdir, src, {
+        "foo": "E::Foo",
+        "bar": "E::Bar",
+        # TODO: the discriminator for this case ends up just being the
+        # the length of the vector. We have no way of doing the correct
+        # thing here.
+        #"baz": "E::Baz((3) vec![1, 2, 3])",
+        "quux": "E::Quux",
+    })
+
+def test_enum_with_niche_in_late_variant(tmpdir):
+    src = """
+        pub enum E {
+            Foo,
+            Bar,
+            Baz,
+            Quux(Vec<i32>),
+        }
+        let foo = E::Foo;
+        let bar = E::Bar;
+        let baz = E::Baz;
+        let quux = E::Quux(vec![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+    """
+    expect_summaries(tmpdir, src, {
+        "foo": "E::Foo",
+        "bar": "E::Bar",
+        "baz": "E::Baz",
+        "quux": "E::Quux((15) vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...])",
+    })
+
+
 
 def test_option(tmpdir):
     src = """
