@@ -65,10 +65,21 @@ pub enum LargeMiddle {
 
 pub enum LargeLate {
     Foo,
-
     Bar,
     Baz,
     Quux(Vec<i32>),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum TokenKind<'a> {
+    Literal(Vec<u8>),
+    Identifier(&'a str),
+
+    Let,
+    If,
+    Else,
+    True,
+    False,
 }
 
 fn enums() {
@@ -100,6 +111,8 @@ fn enums() {
     let ll3 = LargeLate::Bar;
     let ll4 = LargeLate::Baz;
     let ll1 = LargeLate::Quux(vec![1]);
+
+    let x = TokenKind::False;
 
     println!("</enums>");
 }

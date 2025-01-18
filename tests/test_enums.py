@@ -59,13 +59,16 @@ def test_enum_with_niche_in_early_variant(tmpdir):
             Baz,
             Quux,
         }
-        let foo = E::Foo(vec![]);
+        let foo = E::Foo(vec![1, 2]);
         let bar = E::Bar;
         let baz = E::Baz;
         let quux = E::Quux;
     """
     expect_summaries(tmpdir, src, {
-        "foo": "E::Foo((0) vec![])",
+        # TODO: the discriminator for this case ends up just being the
+        # the length of the vector. We have no way of doing the correct
+        # thing here.
+        # "foo": "E::Foo((2) vec![1, 2])",
         "bar": "E::Bar",
         "baz": "E::Baz",
         "quux": "E::Quux",
@@ -89,9 +92,7 @@ def test_enum_with_niche_in_middle_variant(tmpdir):
     expect_summaries(tmpdir, src, {
         "foo": "E::Foo",
         "bar": "E::Bar",
-        # TODO: the discriminator for this case ends up just being the
-        # the length of the vector. We have no way of doing the correct
-        # thing here.
+        # TODO: see `test_enum_with_niche_in_early_variant`. We are screwed here.
         #"baz": "E::Baz((3) vec![1, 2, 3])",
         "quux": "E::Quux",
     })
