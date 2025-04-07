@@ -230,16 +230,19 @@ def read_unique_ptr(valobj):
     return pointer.GetChildAtIndex(0)
 
 
-def string_from_ptr(pointer, length):
+def string_from_addr(process, addr, length):
     if length <= 0:
         return u''
     error = lldb.SBError()
-    process = pointer.GetProcess()
-    data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
+    data = process.ReadMemory(addr, length, error)
     if error.Success():
         return data.decode('utf8', 'replace')
     else:
         raise Exception('ReadMemory error: %s', error.GetCString())
+
+
+def string_from_ptr(pointer, length):
+    string_from_addr(pointer.GetProcess(), pointer.GetValueAsUnsigned(), length)
 
 
 # turns foo::Bar::Baz<T>::Quux<Q> into Quux<Q>
@@ -566,17 +569,22 @@ class MsvcSliceSynthProvider(SliceSynthProvider):
 
 # Base class for *String providers
 class StringLikeSynthProvider(ArrayLikeSynthProvider):
+    def update(self):
+        super().update()
+        self.strval = string_from_ptr(
+            self.ptr,
+            min(self.len, MAX_STRING_SUMMARY_LENGTH)
+        )
+        if self.len > MAX_STRING_SUMMARY_LENGTH:
+            self.strval += u'...'
+
     def get_child_at_index(self, index):
         ch = ArrayLikeSynthProvider.get_child_at_index(self, index)
         ch.SetFormat(lldb.eFormatChar)
         return ch
 
     def get_summary(self):
-        strval = string_from_ptr(self.ptr, min(
-            self.len, MAX_STRING_SUMMARY_LENGTH))
-        if self.len > MAX_STRING_SUMMARY_LENGTH:
-            strval += u'...'
-        return u'"%s"' % strval
+        return u'"%s"' % self.strval
 
 
 class StrSliceSynthProvider(StringLikeSynthProvider):
@@ -693,14 +701,18 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
 
 class StdRcSynthProvider(StdRefCountedSynthProvider):
     def update(self):
-        inner = read_unique_ptr(gcm(self.valobj, 'ptr'))
+        ptr = gcm(self.valobj, 'ptr')
+        inner = read_unique_ptr(ptr)
         self.strong = gcm(inner, 'strong', 'value', 'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'value', 'value').GetValueAsUnsigned()
         if self.strong > 0:
+            inner.SetPreferSyntheticValue(False)
             self.deref = gcm(inner, 'value')
 
             if self.deref.GetType().name == "unsigned char" and self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
-                self.deref = self.deref.Cast(inner.GetTarget().FindFirstType("str"))
+                len = gcm(ptr, "pointer", "length").GetValueAsUnsigned()
+                string_from_addr(self.deref.GetProcess(), self.deref.GetLoadAddress(), len)
+                self.deref = StringLikeSynthProvider()
 
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
         else:
@@ -818,7 +830,9 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         self.summary = ''
         self.variant = self.valobj
 
+        self.valobj.SetPreferSyntheticValue(False)
         union = self.valobj.GetChildAtIndex(0)
+        union.SetPreferSyntheticValue(False)
 
         # at this point we assume this is a rust enum,
         # so if we fail further down the line we report an error

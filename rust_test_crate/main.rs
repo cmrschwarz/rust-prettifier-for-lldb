@@ -4,6 +4,7 @@
 // for interactive testing.
 
 use std::{
+    borrow::Cow,
     collections::{HashMap, VecDeque},
     rc::Rc,
 };
@@ -188,6 +189,8 @@ fn std_lib_types() {
     let x = Box::new(42);
 
     let y = Box::new(Rc::new(42));
+
+    let cow_str = Cow::<str>::Borrowed("asdf");
 
     let rc_string: Rc<String> = Rc::from("asdf".to_string());
 
