@@ -53,13 +53,24 @@ def test_str(tmpdir):
     })
 
 
+
 def test_rc(tmpdir):
     src = """
         use std::rc::Rc;
-        let x = Rc::new(42);
+
+        let rc_int = Rc::new(42);
+        let rc_int_2 = rc_int.clone();
+
+        let rc_string: Rc<String> = Rc::from("asdf".to_string());
+
+        let rc_u8: Rc<u8> = Rc::from(42);
+        let rc_str: Rc<str> = Rc::from("asdf");
     """
     expect_summaries(tmpdir, src, {
-        "x": "(refs:1) 42",
+        "rc_str": "(refs:1) \"asdf\"",
+        "rc_int": "(refs:2) 42",
+        "rc_string": "(refs:1) \"asdf\"",
+        "rc_u8": "(refs:1) 42",
     })
 
 

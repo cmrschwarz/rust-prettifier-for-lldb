@@ -189,6 +189,10 @@ fn std_lib_types() {
 
     let y = Box::new(Rc::new(42));
 
+    let rc_string: Rc<String> = Rc::from("asdf".to_string());
+
+    let rc_str: Rc<str> = Rc::from("asdf");
+
     println!("</std_lib_types>");
 }
 

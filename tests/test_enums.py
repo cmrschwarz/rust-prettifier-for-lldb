@@ -25,7 +25,8 @@ def test_c_style_enum(tmpdir):
 def test_basic_rust_enum(tmpdir):
     src = """
         enum Foo {
-            A(u8), B(u16)
+            A(u8),
+            B(u16)
         }
         let x = Foo::A(42);
     """

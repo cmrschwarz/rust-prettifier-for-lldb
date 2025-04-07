@@ -266,6 +266,23 @@ def unscope_typename(type_name):
 
     return type_name[start::]
 
+# turns Cow<str>::Borrowed::<str>("asdf") into Cow::Borrowed("asdf")
+def drop_template_args(type_name):
+    res = ""
+    level = 0
+    start = 0
+    for i, c in enumerate(type_name):
+        if c == '<':
+            if level == 0:
+                res += type_name[start:i]
+            level += 1
+        elif c == '>':
+            level -= 1
+            if level == 0:
+                start = i + 1
+    res += type_name[start:]
+    return res
+
 
 def get_template_params(type_name):
     params = []
@@ -677,11 +694,14 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
 class StdRcSynthProvider(StdRefCountedSynthProvider):
     def update(self):
         inner = read_unique_ptr(gcm(self.valobj, 'ptr'))
-        self.strong = gcm(inner, 'strong', 'value',
-                          'value').GetValueAsUnsigned()
+        self.strong = gcm(inner, 'strong', 'value', 'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'value', 'value').GetValueAsUnsigned()
         if self.strong > 0:
             self.deref = gcm(inner, 'value')
+
+            if self.deref.GetType().name == "unsigned char" and self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
+                self.deref = self.deref.Cast(inner.GetTarget().FindFirstType("str"))
+
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
         else:
             self.deref = lldb.SBValue()
@@ -798,9 +818,7 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         self.summary = ''
         self.variant = self.valobj
 
-        self.valobj.SetPreferSyntheticValue(False)
         union = self.valobj.GetChildAtIndex(0)
-        union.SetPreferSyntheticValue(False)
 
         # at this point we assume this is a rust enum,
         # so if we fail further down the line we report an error
@@ -862,11 +880,11 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         else:
             variant_outer_subindex = 1
 
-        variant_outer.SetPreferSyntheticValue(True)
+        variant_outer.SetPreferSyntheticValue(False)
         variant = variant_outer.GetChildAtIndex(variant_outer_subindex)
 
         # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.
-        variant_typename = unscope_typename(variant.GetType().GetName())
+        variant_typename = drop_template_args(unscope_typename(variant.GetType().GetName()))
         self.variant_name = variant_typename
 
         variant_deref = False
