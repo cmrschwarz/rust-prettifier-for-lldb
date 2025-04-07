@@ -242,7 +242,7 @@ def string_from_addr(process, addr, length):
 
 
 def string_from_ptr(pointer, length):
-    string_from_addr(pointer.GetProcess(), pointer.GetValueAsUnsigned(), length)
+    return string_from_addr(pointer.GetProcess(), pointer.GetValueAsUnsigned(), length)
 
 
 # turns foo::Bar::Baz<T>::Quux<Q> into Quux<Q>
@@ -686,6 +686,7 @@ class DerefSynthProvider(RustSynthProvider):
 class StdRefCountedSynthProvider(DerefSynthProvider):
     weak = 0
     strong = 0
+    slice_len = None
 
     def get_summary(self):
         if self.weak != 0:
@@ -693,7 +694,18 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
         else:
             s = '(refs:%d) ' % self.strong
         if self.strong > 0:
-            s += obj_summary(self.deref)
+            if self.slice_len is not None:
+                if self.deref.GetType().GetName() == "unsigned char":
+                    str_data = string_from_addr(
+                        self.deref.GetProcess(),
+                        self.deref.GetLoadAddress(),
+                        min(MAX_STRING_SUMMARY_LENGTH, self.slice_len)
+                    )
+                    s += f"\"{str_data}\""
+                else:
+                    s += "[..]"
+            else:
+                s += obj_summary(self.deref)
         else:
             s += '<disposed>'
         return s
@@ -701,20 +713,14 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
 
 class StdRcSynthProvider(StdRefCountedSynthProvider):
     def update(self):
-        ptr = gcm(self.valobj, 'ptr')
-        inner = read_unique_ptr(ptr)
+        inner = read_unique_ptr(gcm(self.valobj, 'ptr'))
         self.strong = gcm(inner, 'strong', 'value', 'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'value', 'value').GetValueAsUnsigned()
         if self.strong > 0:
-            inner.SetPreferSyntheticValue(False)
             self.deref = gcm(inner, 'value')
-
-            if self.deref.GetType().name == "unsigned char" and self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
-                len = gcm(ptr, "pointer", "length").GetValueAsUnsigned()
-                string_from_addr(self.deref.GetProcess(), self.deref.GetLoadAddress(), len)
-                self.deref = StringLikeSynthProvider()
-
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
+            if self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
+                self.slice_len = gcm(self.valobj, "ptr", "pointer", "length").GetValueAsUnsigned()
         else:
             self.deref = lldb.SBValue()
         self.deref.SetPreferSyntheticValue(True)
@@ -727,6 +733,8 @@ class StdArcSynthProvider(StdRefCountedSynthProvider):
         self.weak = gcm(inner, 'weak', 'v', 'value').GetValueAsUnsigned()
         if self.strong > 0:
             self.deref = gcm(inner, 'data')
+            if self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
+                self.slice_len = gcm(self.valobj, "ptr", "pointer", "length")
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
         else:
             self.deref = lldb.SBValue()
