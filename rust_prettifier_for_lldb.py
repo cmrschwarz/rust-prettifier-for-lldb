@@ -40,9 +40,11 @@ lldb_major_version = None
 MAX_STRING_SUMMARY_LENGTH = 1024
 MAX_SEQUENCE_SUMMARY_LENGTH = 10
 
+TARGET_ADDR_SIZE = 8
+
 
 def initialize_category(debugger, internal_dict):
-    global rust_category, MAX_STRING_SUMMARY_LENGTH, lldb_major_version
+    global rust_category, MAX_STRING_SUMMARY_LENGTH, TARGET_ADDR_SIZE, lldb_major_version
 
     version_string_match = re.match(
         r"lldb version (\d+)\.\d+",
@@ -57,13 +59,6 @@ def initialize_category(debugger, internal_dict):
     rust_category = debugger.CreateCategory('Rust')
     # rust_category.AddLanguage(lldb.eLanguageTypeRust)
     rust_category.SetEnabled(True)
-
-    # LLDB does not seem to allow us to do any custom logic instead of the regex
-    # to decide whether a synth provider matches.
-    # so we place this synth provider first (meaning he will be checked against last)
-    # and let him summarize to "" in case he does not apply, which produces the
-    # desired result, albeit in a very hacky fashion
-    attach_synthetic_to_type(GenericEnumSynthProvider, r'.*', True)
 
     attach_synthetic_to_type(TupleSynthProvider, r'^\(.*\)$', True)
     # *-windows-msvc uses this name since 1.47
@@ -152,6 +147,17 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(CowSynthProvider,
                              r'^alloc::borrow::Cow<.+>$', True)
 
+    debugger.HandleCommand(
+        "type summary add"
+        + f" --python-function {__name__}.enum_summary_provider"
+        + f" --recognizer-function {__name__}.enum_recognizer_function",
+    )
+    debugger.HandleCommand(
+        "type synthetic add"
+        + f" --python-class {__name__}.GenericEnumSynthProvider"
+        + f" --recognizer-function {__name__}.enum_recognizer_function",
+    )
+
     if 'rust' in internal_dict.get('source_languages', []):
         lldb.SBDebugger.SetInternalVariable('target.process.thread.step-avoid-regexp',
                                             '^<?(std|core|alloc)::', debugger.GetInstanceName())
@@ -160,6 +166,11 @@ def initialize_category(debugger, internal_dict):
     try:
         MAX_STRING_SUMMARY_LENGTH = debugger.GetSetting(
             'target.max-string-summary-length').GetIntegerValue()
+    except:
+        pass
+
+    try:
+        TARGET_ADDR_SIZE = debugger.GetSelectedTarget().addr_size
     except:
         pass
 
@@ -172,8 +183,9 @@ def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
     rust_category.AddTypeSynthetic(
         lldb.SBTypeNameSpecifier(type_name, is_regex), synth)
 
-    def summary_fn(valobj, dict): return get_synth_summary(
-        synth_class, valobj, dict)
+    def summary_fn(valobj, dict):
+        return get_synth_summary(synth_class, valobj, dict)
+
     # LLDB accesses summary fn's by name, so we need to create a unique one.
     summary_fn.__name__ = '_get_synth_summary_' + synth_class.__name__
     setattr(module, summary_fn.__name__, summary_fn)
@@ -183,10 +195,12 @@ def attach_synthetic_to_type(synth_class, type_name, is_regex=False):
 def attach_summary_to_type(summary_fn, type_name, is_regex=False):
     global module, rust_category
     summary = lldb.SBTypeSummary.CreateWithFunctionName(
-        __name__ + '.' + summary_fn.__name__)
+        __name__ + '.' + summary_fn.__name__
+    )
     summary.SetOptions(lldb.eTypeOptionCascade)
     rust_category.AddTypeSummary(
-        lldb.SBTypeNameSpecifier(type_name, is_regex), summary)
+        lldb.SBTypeNameSpecifier(type_name, is_regex), summary
+    )
 
 
 # 'get_summary' is annoyingly not a part of the standard LLDB synth provider API.
@@ -196,8 +210,7 @@ def get_synth_summary(synth_class, valobj, dict):
     summary = RustSynthProvider.synth_by_id[obj_id].get_summary()
 
     if summary is None:
-        return None
-        # raise Exception("Could not provide summary for given object")
+        raise Exception("Could not provide summary for given object")
     else:
         return str(summary)
 
@@ -761,21 +774,33 @@ def get_enum_discriminator_value(union, index):
 
     return discr.GetValueAsUnsigned()
 
+def enum_summary_provider(valobj, dict):
+    return get_synth_summary(GenericEnumSynthProvider, valobj, dict)
+
+def enum_recognizer_function(sbtype, _internal_dict):
+    if sbtype.GetNumberOfFields() != 1:
+        return False
+
+    if sbtype.GetFieldAtIndex(0).GetName() != "$variants$":
+        return False
+
+    name = sbtype.GetName()
+    special_cases = ["core::option::Option", "core::result::Result", "alloc::borrow::Cow"]
+    for case in special_cases:
+        if name.startswith(case):
+            return False
+
+    return True
+
 
 class GenericEnumSynthProvider(EnumSynthProvider):
     def update(self):
         self.summary = ''
         self.variant = self.valobj
 
-        if self.valobj.GetNumChildren() != 1:
-            return
-
         self.valobj.SetPreferSyntheticValue(False)
         union = self.valobj.GetChildAtIndex(0)
         union.SetPreferSyntheticValue(False)
-        union_child_count = union.GetNumChildren()
-        if union.GetName() != "$variants$" or union_child_count < 1:
-            return
 
         # at this point we assume this is a rust enum,
         # so if we fail further down the line we report an error
@@ -811,12 +836,14 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         selected_variant = discriminator
 
         if first_variant_without_discriminator is not None:
-            if variant_count == 1:
-                selected_variant = 0
             # probably a pointer based niche
             # all of this is just based on trial and error
-            elif discriminator >= 0x8000000000000000:
-                selected_variant = discriminator - 0x8000000000000000
+            high_bit = 1 << (8 * TARGET_ADDR_SIZE - 1)
+
+            if variant_count == 1:
+                selected_variant = 0
+            elif discriminator >= high_bit:
+                selected_variant = discriminator - high_bit
                 if selected_variant >= first_variant_without_discriminator:
                     if selected_variant + 1 < variant_count:
                         selected_variant += 1
@@ -896,7 +923,7 @@ class CowSynthProvider(GenericEnumSynthProvider):
     def update(self):
         super().update()
         self.typename_summary = ""
-        # turn `Ok<T>(..)` into `Ok(..)`
+        # turn `Borrowed<T>(..)` into `Borrowed(..)`
         if self.variant_name.startswith("Borrowed"):
             self.variant_name = "Borrowed"
         elif self.variant_name.startswith("Owned"):
