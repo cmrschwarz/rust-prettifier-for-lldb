@@ -734,7 +734,7 @@ class StdArcSynthProvider(StdRefCountedSynthProvider):
         if self.strong > 0:
             self.deref = gcm(inner, 'data')
             if self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
-                self.slice_len = gcm(self.valobj, "ptr", "pointer", "length")
+                self.slice_len = gcm(self.valobj, "ptr", "pointer", "length").GetValueAsUnsigned()
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
         else:
             self.deref = lldb.SBValue()
