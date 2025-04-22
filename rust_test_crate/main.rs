@@ -197,6 +197,8 @@ fn std_lib_types() {
 
     let rc_str: Rc<str> = Rc::from("asdf");
 
+    let rc_slice = Rc::<[i32]>::from([1, 2, 3]);
+
     println!("</std_lib_types>");
 }
 

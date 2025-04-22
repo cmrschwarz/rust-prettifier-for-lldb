@@ -65,8 +65,11 @@ def test_rc(tmpdir):
 
         let rc_u8: Rc<u8> = Rc::from(42);
         let rc_str: Rc<str> = Rc::from("asdf");
+
+        let rc_slice = Rc::<[i32]>::from([1, 2, 3]);
     """
     expect_summaries(tmpdir, src, {
+        "rc_slice": "(refs:1) [1, 2, 3]",
         "rc_str": "(refs:1) \"asdf\"",
         "rc_int": "(refs:2) 42",
         "rc_string": "(refs:1) \"asdf\"",
@@ -84,12 +87,15 @@ def test_arc(tmpdir):
 
         let arc_u8: Arc<u8> = Arc::from(42);
         let arc_str: Arc<str> = Arc::from("asdf");
+
+        let arc_slice = Arc::<[i32]>::from([1, 2, 3]);
     """
     expect_summaries(tmpdir, src, {
         "arc_str": "(refs:1) \"asdf\"",
         "arc_int": "(refs:2) 42",
         "arc_string": "(refs:1) \"asdf\"",
         "arc_u8": "(refs:1) 42",
+        "arc_slice": "(refs:1) [1, 2, 3]",
     })
 
 

@@ -683,10 +683,28 @@ class DerefSynthProvider(RustSynthProvider):
 
 
 # Base for Rc and Arc
-class StdRefCountedSynthProvider(DerefSynthProvider):
+class StdRefCountedSynthProvider(RustSynthProvider):
     weak = 0
     strong = 0
     slice_len = None
+    value = None
+
+    def has_children(self):
+        return self.slice_len is not None
+
+    def num_children(self):
+        return 0 if self.slice_len is None else self.slice_len
+
+    def get_child_at_index(self, i):
+        elem_size = self.value.GetByteSize()
+        return self.value.CreateChildAtOffset(
+            f'[{i}]', i * elem_size, self.value.GetType()
+        )
+
+    def get_index_of_child(self, name):
+        if self.slice_len is not None:
+            return int(name.lstrip('[').rstrip(']'))
+        return self.value.GetIndexOfChildWithName(name)
 
     def get_summary(self):
         if self.weak != 0:
@@ -695,17 +713,19 @@ class StdRefCountedSynthProvider(DerefSynthProvider):
             s = '(refs:%d) ' % self.strong
         if self.strong > 0:
             if self.slice_len is not None:
-                if self.deref.GetType().GetName() == "unsigned char":
+                if self.value.GetType().GetName() == "unsigned char":
                     str_data = string_from_addr(
-                        self.deref.GetProcess(),
-                        self.deref.GetLoadAddress(),
+                        self.value.GetProcess(),
+                        self.value.GetLoadAddress(),
                         min(MAX_STRING_SUMMARY_LENGTH, self.slice_len)
                     )
                     s += f"\"{str_data}\""
                 else:
-                    s += "[..]"
+                    s += "[%s]" % sequence_summary((
+                        self.get_child_at_index(i) for i in range(self.slice_len)
+                    ))
             else:
-                s += obj_summary(self.deref)
+                s += obj_summary(self.value)
         else:
             s += '<disposed>'
         return s
@@ -717,13 +737,13 @@ class StdRcSynthProvider(StdRefCountedSynthProvider):
         self.strong = gcm(inner, 'strong', 'value', 'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'value', 'value').GetValueAsUnsigned()
         if self.strong > 0:
-            self.deref = gcm(inner, 'value')
+            self.value = gcm(inner, 'value')
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
             if self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
                 self.slice_len = gcm(self.valobj, "ptr", "pointer", "length").GetValueAsUnsigned()
         else:
-            self.deref = lldb.SBValue()
-        self.deref.SetPreferSyntheticValue(True)
+            self.value = lldb.SBValue()
+        self.value.SetPreferSyntheticValue(True)
 
 
 class StdArcSynthProvider(StdRefCountedSynthProvider):
@@ -732,13 +752,13 @@ class StdArcSynthProvider(StdRefCountedSynthProvider):
         self.strong = gcm(inner, 'strong', 'v', 'value').GetValueAsUnsigned()
         self.weak = gcm(inner, 'weak', 'v', 'value').GetValueAsUnsigned()
         if self.strong > 0:
-            self.deref = gcm(inner, 'data')
+            self.value = gcm(inner, 'data')
             if self.valobj.GetType().size == 2 * TARGET_ADDR_SIZE:
                 self.slice_len = gcm(self.valobj, "ptr", "pointer", "length").GetValueAsUnsigned()
             self.weak -= 1  # There's an implicit weak reference communally owned by all the strong pointers
         else:
-            self.deref = lldb.SBValue()
-        self.deref.SetPreferSyntheticValue(True)
+            self.value = lldb.SBValue()
+        self.value.SetPreferSyntheticValue(True)
 
 
 class StdMutexSynthProvider(DerefSynthProvider):
