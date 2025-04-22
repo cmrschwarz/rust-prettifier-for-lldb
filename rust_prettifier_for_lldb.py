@@ -893,6 +893,7 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         if selected_variant >= variant_count:
             return
 
+        union.SetPreferSyntheticValue(True)
         variant_outer = union.GetChildAtIndex(selected_variant)
 
         if variant_outer.GetNumChildren() == 1 and selected_variant == first_variant_without_discriminator:
@@ -902,7 +903,7 @@ class GenericEnumSynthProvider(EnumSynthProvider):
         else:
             variant_outer_subindex = 1
 
-        variant_outer.SetPreferSyntheticValue(False)
+        variant_outer.SetPreferSyntheticValue(True)
         variant = variant_outer.GetChildAtIndex(variant_outer_subindex)
 
         # GetTypeName() gives weird results, e.g. `Foo::A:8`. Don't ask me why.

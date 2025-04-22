@@ -1,4 +1,5 @@
-#![allow(unused)]
+#![allow(clippy::all, unused)]
+
 // Set a breakpoint where you want ot inspect and open your debug log.
 // Use commands like `script lldb.frame.FindVariable("foo").GetNonSyntheticValue()`
 // for interactive testing.
@@ -105,13 +106,13 @@ fn enums() {
 
     let lm1 = LargeMiddle::Foo;
     let lm2 = LargeMiddle::Bar;
-    let lm3 = LargeMiddle::Baz(vec![1]);
+    let lm3 = LargeMiddle::Baz(vec![42]);
     let lm4 = LargeMiddle::Quux;
 
     let ll2 = LargeLate::Foo;
     let ll3 = LargeLate::Bar;
     let ll4 = LargeLate::Baz;
-    let ll1 = LargeLate::Quux(vec![1]);
+    let ll1 = LargeLate::Quux(vec![42]);
 
     let x = TokenKind::False;
 
