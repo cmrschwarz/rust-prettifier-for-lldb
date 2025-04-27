@@ -21,6 +21,8 @@ def run_rust_test(
     rust_src: str,
     test_code: Callable[[lldb.SBDebugger, lldb.SBFrame], None]
 ):
+    project_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    target_dir = os.path.join(project_dir, "target")
     src_path = os.path.join(str(temp_dir), "src/main.rs")
     os.makedirs(os.path.dirname(src_path), exist_ok=True)
     cargo_toml_path = os.path.join(str(temp_dir), "Cargo.toml")
@@ -41,12 +43,12 @@ def run_rust_test(
 
     rust_src = "fn main() {\n" + rust_src + "\n}\n"
 
-    binary_path = os.path.join(str(temp_dir), "target/debug/main")
+    binary_path = os.path.join(target_dir, "debug/main")
     with open(src_path, "w") as f:
         f.write(rust_src)
 
     result = subprocess.run(
-        ["cargo", "build"],
+        ["cargo", "build", "--target-dir", target_dir],
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         cwd=str(temp_dir)
