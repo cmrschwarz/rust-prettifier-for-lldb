@@ -21,21 +21,35 @@ def run_rust_test(
     rust_src: str,
     test_code: Callable[[lldb.SBDebugger, lldb.SBFrame], None]
 ):
-    src_path = os.path.join(str(temp_dir), "main.rs")
+    src_path = os.path.join(str(temp_dir), "src/main.rs")
+    os.makedirs(os.path.dirname(src_path), exist_ok=True)
+    cargo_toml_path = os.path.join(str(temp_dir), "Cargo.toml")
+    with open(cargo_toml_path, "w") as f:
+        f.write("""
+            [package]
+            name = "main"
+            version = "0.1.0"
+            edition = "2021"
+
+            [dependencies]
+            crossbeam = "0.8.4"
+            """
+        )
     rust_src = textwrap.indent(textwrap.dedent(rust_src), "    ")
 
     rust_src += "    let _ = 0 + 0;"  # dummy line to place the breakpoint on
 
     rust_src = "fn main() {\n" + rust_src + "\n}\n"
 
-    binary_path = os.path.join(str(temp_dir), "main")
+    binary_path = os.path.join(str(temp_dir), "target/debug/main")
     with open(src_path, "w") as f:
         f.write(rust_src)
 
     result = subprocess.run(
-        ["rustc", "-g", src_path, "-o", binary_path],
+        ["cargo", "build"],
         stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE
+        stdout=subprocess.PIPE,
+        cwd=str(temp_dir)
     )
 
     if result.returncode != 0:
