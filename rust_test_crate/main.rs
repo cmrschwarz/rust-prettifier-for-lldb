@@ -8,6 +8,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
     rc::Rc,
+    sync::Arc,
 };
 
 use core::iter::FromIterator;
@@ -202,6 +203,33 @@ fn std_lib_types() {
     println!("</std_lib_types>");
 }
 
+// see https://github.com/cmrschwarz/rust-prettifier-for-lldb/issues/5
+fn rc_of_vec() {
+    const ARRAY: [i32; 3] = [1, 2, 3];
+
+    let vec = Vec::from(ARRAY);
+
+    let vec_deque = VecDeque::from(ARRAY);
+
+    let rc_vec = Rc::new(Vec::from(ARRAY));
+
+    let rc_vec_deque = Rc::new(VecDeque::from(ARRAY));
+
+    let rc_slice: Rc<[i32]> = Rc::new(ARRAY);
+
+    let rc_ref_slice: Rc<&[i32]> = Rc::new(&ARRAY);
+
+    let arc_vec = Arc::new(Vec::from(ARRAY));
+
+    let arc_vec_deque = Arc::new(VecDeque::from(ARRAY));
+
+    let arc_slice: Arc<[i32]> = Arc::new(ARRAY);
+
+    let arc_ref_slice: Arc<&[i32]> = Arc::new(&ARRAY[..]);
+
+    println!("</rc_of_vec>");
+}
+
 enum MyEnum {
     A(&'static str),
     B(i32),
@@ -229,5 +257,6 @@ fn main() {
     hashmap();
     collections();
     std_lib_types();
+    rc_of_vec();
     demo();
 }

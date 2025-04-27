@@ -203,7 +203,7 @@ def test_access_vec_in_enum(tmpdir):
     ])
 
 
-def _broken_test_lld_crash(tmpdir):  # TODfooO: send a bugreport to LLDB
+def _broken_test_lld_crash(tmpdir):  # TODO: send a bugreport to LLDB
     src = """
         use std::num::NonZeroI64;
         #[repr(C)]

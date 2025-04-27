@@ -695,27 +695,32 @@ class StdRefCountedSynthProvider(RustSynthProvider):
     value = None
 
     def has_children(self):
-        return self.slice_len is not None
+        return True
 
     def num_children(self):
-        return 0 if self.slice_len is None else self.slice_len
+        return self.value.GetNumChildren() if self.slice_len is None else self.slice_len
 
     def get_child_at_index(self, i):
-        elem_size = self.value.GetByteSize()
-        return self.value.CreateChildAtOffset(
-            f'[{i}]', i * elem_size, self.value.GetType()
-        )
+        if self.slice_len:
+            elem_size = self.value.GetByteSize()
+            return self.value.CreateChildAtOffset(
+                f'[{i}]', i * elem_size, self.value.GetType()
+            )
+
+        return self.value.GetChildAtIndex(i)
+
 
     def get_index_of_child(self, name):
         if self.slice_len is not None:
             return int(name.lstrip('[').rstrip(']'))
+
         return self.value.GetIndexOfChildWithName(name)
 
     def get_summary(self):
         if self.weak != 0:
-            s = '(refs:%d,weak:%d) ' % (self.strong, self.weak)
+            s = '(strong:%d, weak:%d) ' % (self.strong, self.weak)
         else:
-            s = '(refs:%d) ' % self.strong
+            s = '(strong:%d) ' % self.strong
         if self.strong > 0:
             if self.slice_len is not None:
                 if self.value.GetType().GetName() == "unsigned char":

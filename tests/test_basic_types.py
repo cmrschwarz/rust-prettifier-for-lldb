@@ -58,6 +58,8 @@ def test_rc(tmpdir):
     src = """
         use std::rc::Rc;
 
+        let rc_vec = Rc::new(Vec::from([1, 2, 3]));
+
         let rc_int = Rc::new(42);
         let rc_int_2 = rc_int.clone();
 
@@ -67,18 +69,27 @@ def test_rc(tmpdir):
         let rc_str: Rc<str> = Rc::from("asdf");
 
         let rc_slice = Rc::<[i32]>::from([1, 2, 3]);
+
+
     """
     expect_summaries(tmpdir, src, {
-        "rc_slice": "(refs:1) [1, 2, 3]",
-        "rc_str": "(refs:1) \"asdf\"",
-        "rc_int": "(refs:2) 42",
-        "rc_string": "(refs:1) \"asdf\"",
-        "rc_u8": "(refs:1) 42",
+        "rc_vec": "(strong:1) (3) vec![1, 2, 3]",
+        "rc_slice": "(strong:1) [1, 2, 3]",
+        "rc_str": "(strong:1) \"asdf\"",
+        "rc_int": "(strong:2) 42",
+        "rc_string": "(strong:1) \"asdf\"",
+        "rc_u8": "(strong:1) 42",
+    })
+
+    expect_command_output(tmpdir, src, {
+        ("v rc_vec[0]", "(int) rc_vec[0] = 1\n")
     })
 
 def test_arc(tmpdir):
     src = """
         use std::sync::Arc;
+
+        let arc_vec = Arc::new(Vec::from([1, 2, 3]));
 
         let arc_int = Arc::new(42);
         let arc_int_2 = arc_int.clone();
@@ -88,14 +99,21 @@ def test_arc(tmpdir):
         let arc_u8: Arc<u8> = Arc::from(42);
         let arc_str: Arc<str> = Arc::from("asdf");
 
+        let weak = Arc::downgrade(&arc_str);
+
         let arc_slice = Arc::<[i32]>::from([1, 2, 3]);
     """
     expect_summaries(tmpdir, src, {
-        "arc_str": "(refs:1) \"asdf\"",
-        "arc_int": "(refs:2) 42",
-        "arc_string": "(refs:1) \"asdf\"",
-        "arc_u8": "(refs:1) 42",
-        "arc_slice": "(refs:1) [1, 2, 3]",
+        "arc_vec": "(strong:1) (3) vec![1, 2, 3]",
+        "arc_str": "(strong:1, weak:1) \"asdf\"",
+        "arc_int": "(strong:2) 42",
+        "arc_string": "(strong:1) \"asdf\"",
+        "arc_u8": "(strong:1) 42",
+        "arc_slice": "(strong:1) [1, 2, 3]",
+    })
+
+    expect_command_output(tmpdir, src, {
+        ("v arc_vec[0]", "(int) arc_vec[0] = 1\n")
     })
 
 
