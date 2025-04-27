@@ -149,6 +149,9 @@ def initialize_category(debugger, internal_dict):
     attach_synthetic_to_type(CowSynthProvider,
                              r'^alloc::borrow::Cow<.+>$', True)
 
+    attach_synthetic_to_type(CrossbeamAtomicCellSynthProvider,
+                             r'^crossbeam_utils::atomic::atomic_cell::AtomicCell<.+>$', True)
+
     debugger.HandleCommand(
         "type summary add"
         + f" --python-function {__name__}.enum_summary_provider"
@@ -1199,6 +1202,11 @@ class StdHashSetSynthProvider(StdHashMapSynthProvider):
         bucket_idx = self.valid_indices[index]
         item = self.buckets.GetChildAtIndex(bucket_idx).GetChildAtIndex(0)
         return item.CreateChildAtOffset('[%d]' % index, 0, item.GetType())
+
+class CrossbeamAtomicCellSynthProvider(DerefSynthProvider):
+    def update(self):
+        self.deref = gcm(self.valobj, 'value', 'value', 'value', 'value')
+        self.deref.SetPreferSyntheticValue(True)
 
 
 def __lldb_init_module(debugger_obj, internal_dict):  # pyright: ignore
