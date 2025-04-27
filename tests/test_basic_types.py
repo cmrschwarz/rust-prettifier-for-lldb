@@ -109,7 +109,6 @@ def test_box(tmpdir):
         ("v *x", "(int) *x = 42\n"),
     ])
 
-
 def test_tuple(tmpdir):
     src = """
         let x = (42, "foo");
@@ -130,3 +129,15 @@ def test_tuple_access(tmpdir):
         ("v x[0]", "(int) 0 = 42\n"),
         ("v x.0", "(int) 0 = 42\n"),
     ])
+
+def test_cell(tmpdir):
+    src = """
+        use std::cell::{Cell, UnsafeCell};
+        let safe = Cell::<i32>::new(42);
+        let not_safe = UnsafeCell::<i32>::new(42);
+    """
+
+    expect_summaries(tmpdir, src, {
+        "safe": "42",
+        "not_safe": "42",
+    })

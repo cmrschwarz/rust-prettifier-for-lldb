@@ -128,6 +128,8 @@ def initialize_category(debugger, internal_dict):
 
     attach_synthetic_to_type(StdCellSynthProvider,
                              r'^core::cell::Cell<.+>$', True)
+    attach_synthetic_to_type(StdUnsafeCellSynthProvider,
+                             r'^core::cell::UnsafeCell<.+>$', True)
     attach_synthetic_to_type(StdRefCellSynthProvider,
                              r'^core::cell::RefCell<.+>$', True)
     attach_synthetic_to_type(
@@ -772,6 +774,11 @@ class StdCellSynthProvider(DerefSynthProvider):
         self.deref = gcm(self.valobj, 'value', 'value')
         self.deref.SetPreferSyntheticValue(True)
 
+
+class StdUnsafeCellSynthProvider(DerefSynthProvider):
+    def update(self):
+        self.deref = gcm(self.valobj, 'value')
+        self.deref.SetPreferSyntheticValue(True)
 
 class StdRefCellSynthProvider(DerefSynthProvider):
     def update(self):
